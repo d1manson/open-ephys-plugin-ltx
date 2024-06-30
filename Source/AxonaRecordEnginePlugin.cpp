@@ -26,7 +26,7 @@
 namespace Axona {
     RecordEnginePlugin::RecordEnginePlugin()
     {
-
+        LOGD("CUSTOM AXONA PLUGIN LOG")
     }
 
     RecordEnginePlugin::~RecordEnginePlugin()
@@ -37,7 +37,7 @@ namespace Axona {
 
     RecordEngineManager* RecordEnginePlugin::getEngineManager()
     {
-        RecordEngineManager* man = new RecordEngineManager("CUSTOM", "Custom Format",
+        RecordEngineManager* man = new RecordEngineManager("AXONA", "Axona Format",
             &(engineFactory<RecordEnginePlugin>));
 
         return man;
@@ -51,9 +51,10 @@ namespace Axona {
 
     void RecordEnginePlugin::openFiles(File rootFolder, int experimentNumber, int recordingNumber)
     {
-        if (recordingNumber != 0){
-            return;
-        }
+
+        String basePath(rootFolder.getParentDirectory().getFullPathName() + "_" + String(experimentNumber) + "_" + String(recordingNumber));
+        
+        openSetFile(basePath);
 
         spikeChannels.clear();
 
@@ -77,6 +78,7 @@ namespace Axona {
     void RecordEnginePlugin::closeFiles()
     {
         // TODO: this
+        fclose(setFile);
     }
 
     void RecordEnginePlugin::writeContinuousData(int writeChannel,
@@ -112,6 +114,45 @@ namespace Axona {
         String text)
     {
         // maybe we could write this to the header of each file?
+    }
+
+
+
+
+
+    void RecordEnginePlugin::openSetFile(String basePath)
+    {
+        FILE* setFile_;
+
+        String fullPath = basePath + ".set";
+
+        LOGD("OPENING FILE: ", fullPath);
+
+        File f = File(fullPath);
+
+        diskWriteLock.enter();
+
+        setFile_ = fopen(fullPath.toUTF8(), "wb");
+
+        if (f.exists())
+            fseek(setFile_, 0, SEEK_END);
+
+
+
+
+        std::time_t t = std::time(nullptr);
+        std::tm tm = *std::localtime(&t);
+
+        std::stringstream headerPt1;
+        headerPt1 << "trial_date " << std::put_time(&tm, "%A, %d %b %Y")
+            << "\ntrial_time " << std::put_time(&tm,"%H:%M")
+            << "\ncreated_by open-ephys-axona-plugin";
+
+        std::string data = headerPt1.str();
+        fwrite(data.c_str(), sizeof(char), data.size(), setFile_);
+
+        diskWriteLock.exit();
+        setFile = setFile_;
     }
 
 }

@@ -26,6 +26,10 @@
 
 #include <RecordingLib.h>
 
+
+#include <stdio.h>
+#include <map>
+
 namespace Axona {
 
     class RecordEnginePlugin : public RecordEngine
@@ -74,7 +78,12 @@ namespace Axona {
     private:
         Array<const SpikeChannel*> spikeChannels;
 
+        void RecordEnginePlugin::openSetFile(String basePath);
 
+        /** Mutex for disk writing*/
+        CriticalSection diskWriteLock;
+
+        FILE* setFile;
     };
 
 }
