@@ -21,7 +21,7 @@
 
 */
 
-#include "RecordEnginePlugin.h"
+#include "AxonaRecordEnginePlugin.h"
 
 namespace Axona {
     RecordEnginePlugin::RecordEnginePlugin()
@@ -65,7 +65,7 @@ namespace Axona {
 
 
         for (int i = 0; i < getNumRecordedSpikeChannels(); i++){
-            const  SpikeChannel* channel = getSpikeChannel(i);
+            const  SpikeChannel* chan = getSpikeChannel(i);
             // TODO: assert chan->getNumChannels() == 4
             spikeChannels.add(chan);
             //: TODO: create a tet file for the given tetrode, with a header.

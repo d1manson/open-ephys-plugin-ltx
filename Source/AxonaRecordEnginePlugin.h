@@ -72,7 +72,7 @@ namespace Axona {
                                     String text);
 
     private:
-
+        Array<const SpikeChannel*> spikeChannels;
 
 
     };
