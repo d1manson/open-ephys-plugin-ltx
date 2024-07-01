@@ -1,3 +1,7 @@
+# Open Ephys Plugin - LTX Record Engine
+
+The LTX format is broadly compatible with **L**egacy analysis code used with **T**etrode recordings in various rodent labs in the UK, and Europe in particular. However it is _not_ e**X**plicitly defined. 
+
 # Record Engine Plugin Template
 
 This repository contains a template for building **Record Engine** plugins for the [Open Ephys GUI](https://github.com/open-ephys/plugin-GUI). Record Engine plugins allow the GUI's Record Node to write data into a new format. By default, the GUI ships with Record Engines for the Binary and Open Ephys formats.
