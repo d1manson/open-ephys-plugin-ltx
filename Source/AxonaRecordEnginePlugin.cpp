@@ -120,11 +120,50 @@ namespace Axona {
 
     void RecordEnginePlugin::writeSpike(int electrodeIndex, const Spike* spike)
     {
-        //spike->getChannelIndex
-        const SpikeChannel* channel = getSpikeChannel(electrodeIndex);
 
-        // The aim is to write a 4 byte timestamp (trial starting at 0), and then 50x uint8 (?) of voltage data
-        // the spike should contain the channel or something
+        constexpr int numChans = 4;
+        constexpr int bytesPerChan = 4 /* 4 byte timestamp */ + 50 /* one-byte voltage for 50 samples */;
+        constexpr int totalBytes = bytesPerChan * numChans;
+        constexpr int oeSampsPerSpike = 40; // seems to be hard-coded as 8+32 = 40
+
+
+        const SpikeChannel* channel = getSpikeChannel(electrodeIndex);
+        if (channel->getNumChannels() != numChans) {
+            LOGE("Expected exactly 4 channels for a spike, but found ", channel->getNumChannels());
+            return;
+        }
+        if (channel->getTotalSamples() == oeSampsPerSpike) {
+            LOGE("Expected exactly 40 samples per spike, which will be padded out to 50, but found ", channel->getTotalSamples());
+            return;
+        }
+
+        uint8_t spikeBuffer[totalBytes] = {}; // initialise with zeros
+
+
+        uint32_t timestamp = static_cast<uint32_t>(spike->getTimestampInSeconds() * 96000);
+
+        const float* voltageData = spike->getDataPointer();
+        for (int i = 0; i < numChans; i++)
+        {
+            std::memcpy(spikeBuffer + bytesPerChan * i, &timestamp, sizeof(uint32_t));
+
+            const float bitVolts = channel->getChannelBitVolts(i);
+            for (int j = 0; j < oeSampsPerSpike; j++)
+            {
+                spikeBuffer[i*bytesPerChan + 4 /* timestamp bytes */ + j] =
+                    static_cast<uint8_t>(voltageData[i * oeSampsPerSpike + j] / bitVolts + 127);
+            }
+        }
+
+
+        LOGC("spike->getChannelIndex(): ", spike->getChannelIndex()); // TODO: check if getChannelIndex is the right thing
+
+        diskWriteLock.enter();
+
+        fwrite(spikeBuffer, 1, totalBytes, tetFiles[spike->getChannelIndex()]);  
+        
+        diskWriteLock.exit();
+
     }
 
 
