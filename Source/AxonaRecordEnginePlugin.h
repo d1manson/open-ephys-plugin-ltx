@@ -77,8 +77,9 @@ namespace Axona {
 
     private:
         Array<const SpikeChannel*> spikeChannels;
+        Array<FILE*> tetFiles;
 
-        void RecordEnginePlugin::openSetFile(String basePath);
+        void RecordEnginePlugin::openSetFile(String basePath, std::tm start_tm);
 
         /** Mutex for disk writing*/
         CriticalSection diskWriteLock;
