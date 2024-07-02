@@ -26,7 +26,7 @@
 namespace Axona {
     RecordEnginePlugin::RecordEnginePlugin()
     {
-        LOGD("CUSTOM AXONA PLUGIN LOG")
+       
     }
 
     RecordEnginePlugin::~RecordEnginePlugin()
@@ -37,7 +37,7 @@ namespace Axona {
 
     RecordEngineManager* RecordEnginePlugin::getEngineManager()
     {
-        RecordEngineManager* man = new RecordEngineManager("AXONA", "Axona Format",
+        RecordEngineManager* man = new RecordEngineManager("LTX", "LTX Format",
             &(engineFactory<RecordEnginePlugin>));
 
         return man;
@@ -51,34 +51,54 @@ namespace Axona {
 
     void RecordEnginePlugin::openFiles(File rootFolder, int experimentNumber, int recordingNumber)
     {
+        String basePath(rootFolder.getParentDirectory().getFullPathName());
 
-        String basePath(rootFolder.getParentDirectory().getFullPathName() + "_" + String(experimentNumber) + "_" + String(recordingNumber));
+        std::time_t t = std::time(nullptr);
+        std::tm start_tm = *std::localtime(&t);
         
-        openSetFile(basePath);
+        openSetFile(basePath, start_tm);
 
         spikeChannels.clear();
 
-
-        // New file for each experiment, e.g. experiment1.nwb, epxperiment2.nwb, etc.
-        String basepath = rootFolder.getFullPathName() +
-         rootFolder.getSeparatorString() +
-         "experiment" + String(experimentNumber); // TODO: ideally allow parameterization of the name
-
-
         for (int i = 0; i < getNumRecordedSpikeChannels(); i++){
-            const  SpikeChannel* chan = getSpikeChannel(i);
-            // TODO: assert chan->getNumChannels() == 4
-            spikeChannels.add(chan);
-            //: TODO: create a tet file for the given tetrode, with a header.
-            //        and store the file handle in an array on the class
+            String fullPath = basePath + "." + String(i);
+            LOGC("OPENING FILE: ", fullPath);
+
+            diskWriteLock.enter();
+
+            FILE* tetFile_ = fopen(fullPath.toUTF8(), "wb");
+
+            std::stringstream header;
+            header << "trial_date " << std::put_time(&start_tm, "%A, %d %b %Y")
+                << "\ntrial_time " << std::put_time(&start_tm, "%H:%M")
+                << "\ncreated_by open-ephys-plugin-ltx"
+                << "\nduration ##########" // TODO: overwrite this with a real value in seconds at the end of the trial
+                << "\nnum_chans 4"
+                << "\ntimebase 96000 hz" // probably not
+                << "\nbytes_per_timestamp 4"
+                << "\nsamples_per_spike 50" // probably need to zero-pad if this isn't right, because i think we need to stick with 50 for backwards compatibility
+                << "\nbytes_per_sample 1"
+                << "\nspike_format t,ch1,t,ch2,t,ch3,t,ch4"
+                << "\nnum_spikes ##########" // TODO: overwrite this with a real value at the end of the trial
+                << "\ndata_start";
+            std::string data = header.str();
+            fwrite(data.c_str(), sizeof(char), data.size(), tetFile_);
+
+            diskWriteLock.exit();
+
+            tetFiles.add(tetFile_);
         }
 
     }
 
     void RecordEnginePlugin::closeFiles()
     {
-        // TODO: this
+        // TODO: add duration to set file and ideally the tet files too (maybe other things?)
         fclose(setFile);
+        for (int i = 0; i < tetFiles.size(); i++) {
+            fclose(tetFiles[i]);
+        }
+        
     }
 
     void RecordEnginePlugin::writeContinuousData(int writeChannel,
@@ -100,6 +120,7 @@ namespace Axona {
 
     void RecordEnginePlugin::writeSpike(int electrodeIndex, const Spike* spike)
     {
+        //spike->getChannelIndex
         const SpikeChannel* channel = getSpikeChannel(electrodeIndex);
 
         // The aim is to write a 4 byte timestamp (trial starting at 0), and then 50x uint8 (?) of voltage data
@@ -120,33 +141,21 @@ namespace Axona {
 
 
 
-    void RecordEnginePlugin::openSetFile(String basePath)
+    void RecordEnginePlugin::openSetFile(String basePath, std::tm tm)
     {
-        FILE* setFile_;
-
         String fullPath = basePath + ".set";
 
         LOGD("OPENING FILE: ", fullPath);
 
-        File f = File(fullPath);
-
         diskWriteLock.enter();
 
-        setFile_ = fopen(fullPath.toUTF8(), "wb");
-
-        if (f.exists())
-            fseek(setFile_, 0, SEEK_END);
-
-
-
-
-        std::time_t t = std::time(nullptr);
-        std::tm tm = *std::localtime(&t);
+        FILE* setFile_ = fopen(fullPath.toUTF8(), "wb");
 
         std::stringstream headerPt1;
         headerPt1 << "trial_date " << std::put_time(&tm, "%A, %d %b %Y")
-            << "\ntrial_time " << std::put_time(&tm,"%H:%M")
-            << "\ncreated_by open-ephys-axona-plugin";
+            << "\ntrial_time " << std::put_time(&tm, "%H:%M")
+            << "\ncreated_by open-ephys-axona-plugin"
+            << "\nduration ##########"; // TODO: overwrite this with a real value in seconds at the end of the trial
 
         std::string data = headerPt1.str();
         fwrite(data.c_str(), sizeof(char), data.size(), setFile_);
