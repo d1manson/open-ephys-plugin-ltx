@@ -24,6 +24,14 @@
 #include "LTXRecordEnginePlugin.h"
 
 namespace LTX {
+    constexpr size_t headerMarkerSize = 14;
+    constexpr char headerMarkerFormat[] = "%-14d"; // this 14 must match the 14 above.
+    constexpr char headerMarkerNumSpikes[] = "###NUM_SPIKES#";
+    constexpr char headerMarkerDuration[] = "####DURATION##";
+    static_assert(std::char_traits<char>::length(headerMarkerNumSpikes) == headerMarkerSize, "header marker length should be 14");
+    static_assert(std::char_traits<char>::length(headerMarkerDuration) == headerMarkerSize, "header marker length should be 14");
+
+
     RecordEnginePlugin::RecordEnginePlugin()
     {
        
@@ -53,54 +61,77 @@ namespace LTX {
     {
         String basePath(rootFolder.getParentDirectory().getFullPathName());
 
+        startTime = std::chrono::high_resolution_clock::now(); // used to calculate duration (not sure if OpenEphys offers an alternative)
+
         std::time_t t = std::time(nullptr);
         std::tm start_tm = *std::localtime(&t);
         
         openSetFile(basePath, start_tm);
 
-        spikeChannels.clear();
+        // the tet files all have the same header, that is until we write their num spikes at the end.
+        std::stringstream header;
+        header << "trial_date " << std::put_time(&start_tm, "%A, %d %b %Y")
+            << "\r\ntrial_time " << std::put_time(&start_tm, "%H:%M")
+            << "\r\ncreated_by open-ephys-plugin-ltx"
+            << "\r\nduration " << headerMarkerDuration
+            << "\r\nnum_chans 4"
+            << "\r\ntimebase 96000 hz" // probably not
+            << "\r\nbytes_per_timestamp 4"
+            << "\r\nsamples_per_spike 50" // actually it's not, but we zero-pad when writing tot he file to keep it at 50
+            << "\r\nbytes_per_sample 1"
+            << "\r\nspike_format t,ch1,t,ch2,t,ch3,t,ch4"
+            << "\r\nnum_spikes " << headerMarkerNumSpikes
+            << "\r\ndata_start";
+        std::string headerStr = header.str();
+        tetHeaderOffsetNumSpikes = headerStr.find(headerMarkerNumSpikes);
+        tetHeaderOffsetDuration = headerStr.find(headerMarkerDuration);
+
 
         for (int i = 0; i < getNumRecordedSpikeChannels(); i++){
             String fullPath = basePath + "." + String(i+1); // use 1-based indexing for the output file names
             LOGC("OPENING FILE: ", fullPath);
 
             diskWriteLock.enter();
-
             FILE* tetFile_ = fopen(fullPath.toUTF8(), "wb");
-
-            std::stringstream header;
-            header << "trial_date " << std::put_time(&start_tm, "%A, %d %b %Y")
-                << "\r\ntrial_time " << std::put_time(&start_tm, "%H:%M")
-                << "\r\ncreated_by open-ephys-plugin-ltx"
-                << "\r\nduration ##########" // TODO: overwrite this with a real value in seconds at the end of the trial
-                << "\r\nnum_chans 4"
-                << "\r\ntimebase 96000 hz" // probably not
-                << "\r\nbytes_per_timestamp 4"
-                << "\r\nsamples_per_spike 50" // probably need to zero-pad if this isn't right, because i think we need to stick with 50 for backwards compatibility
-                << "\r\nbytes_per_sample 1"
-                << "\r\nspike_format t,ch1,t,ch2,t,ch3,t,ch4"
-                << "\r\nnum_spikes 10" // TODO: set a real value here at the end of the trial
-                << "\r\ndata_start";
-            std::string data = header.str();
-            fwrite(data.c_str(), 1, data.size(), tetFile_);
-
+            fwrite(headerStr.c_str(), 1, headerStr.size(), tetFile_);
             diskWriteLock.exit();
 
             tetFiles.add(tetFile_);
+            tetSpikeCount.add(0);
         }
 
     }
 
     void RecordEnginePlugin::closeFiles()
     {
-        diskWriteLock.enter();
-        // TODO: add duration to set file and ideally the tet files too (maybe other things?)
-        fclose(setFile);
-        for (int i = 0; i < tetFiles.size(); i++) {
+        // compute duration
+        char durationStr[headerMarkerSize + 1];
+        std::chrono::seconds durationSeconds std::chrono::duration_cast<Seconds>(std::chrono::high_resolution_clock::now() - startTime);
+        sprintf(durationStr, headerMarkerFormat, durationSeconds);
 
+        // finalise set file
+        diskWriteLock.enter();
+        fseek(setFile, setHeaderOffsetDuration, SEEK_SET);
+        fwrite(durationStr.c_str(), 1, durationStr.size(), setFile);
+        fclose(setFile);
+
+        // finalise tet files
+        for (int i = 0; i < tetFiles.size(); i++) {
             constexpr char endToken[] = "\r\ndata_end";
             fwrite(endToken, 1, sizeof(endToken) - 1 /* ignore \0 */, tetFiles[i]);
+
+            // write duration
+            fseek(tetFiles[i], tetHeaderOffsetDuration, SEEK_SET);
+            fwrite(durationStr.c_str(), 1, durationStr.size(), tetFiles[i]);
+
+            // write num spikes
+            char nSpikesStr[headerMarkerSize + 1];
+            sprintf(nSpikesStr, headerMarkerFormat, tetSpikeCount[i]);
+            fseek(tetFiles[i], tetHeaderOffsetNumSpikes, SEEK_SET);
+            fwrite(nSpikesStr.c_str(), 1, nSpikesStr.size(), tetFiles[i]);
+
             fclose(tetFiles[i]);
+
         }
         diskWriteLock.exit();
 
@@ -159,9 +190,12 @@ namespace LTX {
             const float bitVolts = channel->getChannelBitVolts(i);
             for (int j = 0; j < oeSampsPerSpike; j++)
             {
-                // TODO: make the cast in a capped way to avoid overflow or udnerflow
-                spikeBuffer[i*bytesPerChan + 4 /* timestamp bytes */ + j] =
-                    static_cast<int8_t>(voltageData[i * oeSampsPerSpike + j] / bitVolts / 500 * 127); // convert float to milivolts (?), and then map +- 500 => +-127
+                // Go from openephys floating point [-something, +something] => [-128, +127]
+                // I think in principle we can do this properly, given the bitVolts, but for now we just do this fairly arbitrary thing
+                float voltage8bit = voltageData[i * oeSampsPerSpike + j] / bitVolts / 500 * 127;
+                if (voltage8bit > 127) voltage8bit = 127;
+                if (voltage8bit < -128) voltage8bit = -128;
+                spikeBuffer[i*bytesPerChan + 4 /* timestamp bytes */ + j] = static_cast<int8_t>(voltage8bit);
             }
         }
 
@@ -170,7 +204,7 @@ namespace LTX {
         fwrite(spikeBuffer, 1, totalBytes, tetFiles[spike->getChannelIndex()]);  
         
         diskWriteLock.exit();
-
+        tetSpikeCount[spike->getChannelIndex()]++;
     }
 
 
@@ -191,21 +225,17 @@ namespace LTX {
     {
         String fullPath = basePath + ".set";
 
-        LOGD("OPENING FILE: ", fullPath);
-
-        diskWriteLock.enter();
-
-        FILE* setFile_ = fopen(fullPath.toUTF8(), "wb");
-
-        std::stringstream headerPt1;
+        std::stringstream header;
         headerPt1 << "trial_date " << std::put_time(&tm, "%A, %d %b %Y")
             << "\r\ntrial_time " << std::put_time(&tm, "%H:%M")
             << "\r\ncreated_by open-ephys-ltx-plugin"
-            << "\r\nduration ##########"; // TODO: overwrite this with a real value in seconds at the end of the trial
+            << "\r\nduration " << headerMarkerDuration;
+        std::string headerStr = header.str();
+        setHeaderOffsetDuration = headerStr.find(headerMarkerDuration);
 
-        std::string data = headerPt1.str();
-        fwrite(data.c_str(), sizeof(char), data.size(), setFile_);
-
+        diskWriteLock.enter();
+        FILE* setFile_ = fopen(fullPath.toUTF8(), "wb");
+        fwrite(headerStr.c_str(), sizeof(char), headerStr.size(), setFile_);
         diskWriteLock.exit();
         setFile = setFile_;
     }

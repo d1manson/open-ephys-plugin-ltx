@@ -29,6 +29,8 @@
 
 #include <stdio.h>
 #include <map>
+#include <chrono>
+
 
 namespace LTX {
 
@@ -66,8 +68,7 @@ namespace LTX {
                         const EventPacket& event);
 
         /** Write a spike to disk */
-        void writeSpike(int electrodeIndex,
-            const Spike* spike);
+        void writeSpike(int electrodeIndex, const Spike* spike);
 
         /** Write the timestamp sync text messages to disk*/
         void writeTimestampSyncText(uint64 streamId,
@@ -76,15 +77,21 @@ namespace LTX {
                                     String text);
 
     private:
-        Array<const SpikeChannel*> spikeChannels;
-        Array<FILE*> tetFiles;
+        std::chrono::time_point<std::chrono::high_resolution_clock> startTime;
 
+        FILE* setFile;
+
+        Array<FILE*> tetFiles;
+        Array<long> tetSpikeCount;
+
+        long tetHeaderOffsetNumSpikes;
+        long tetHeaderOffsetDuration;
+        long setHeaderOffsetDuration;
         void RecordEnginePlugin::openSetFile(String basePath, std::tm start_tm);
 
         /** Mutex for disk writing*/
         CriticalSection diskWriteLock;
 
-        FILE* setFile;
     };
 
 }
