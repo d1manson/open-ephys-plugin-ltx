@@ -22,7 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <PluginInfo.h>
 
-#include "AxonaRecordEnginePlugin.h"
+#include "LTXRecordEnginePlugin.h"
 
 #include <string>
 
@@ -43,7 +43,7 @@ extern "C" EXPORT void getLibInfo(Plugin::LibraryInfo* info)
 	Should not be changed to ensure it is always equal to the one used in the latest codebase.
 	The GUI refuses to load plugins with mismatched API versions */
 	info->apiVersion = PLUGIN_API_VER;
-	info->name = "Axona Format";
+	info->name = "LTX Format";
 	info->libVersion = "0.1.0";
 	info->numPlugins = NUM_PLUGINS;
 }
@@ -55,8 +55,8 @@ extern "C" EXPORT int getPluginInfo(int index, Plugin::PluginInfo* info)
 	case 0:
 
 		info->type = Plugin::Type::RECORD_ENGINE;
-		info->recordEngine.name = "Axona Format";
-		info->recordEngine.creator = &(Plugin::createRecordEngine<Axona::RecordEnginePlugin>);
+		info->recordEngine.name = "LTX Format";
+		info->recordEngine.creator = &(Plugin::createRecordEngine<LTX::RecordEnginePlugin>);
 		break;
 
 	default:

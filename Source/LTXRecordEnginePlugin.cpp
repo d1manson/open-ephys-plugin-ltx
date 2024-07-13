@@ -21,9 +21,9 @@
 
 */
 
-#include "AxonaRecordEnginePlugin.h"
+#include "LTXRecordEnginePlugin.h"
 
-namespace Axona {
+namespace LTX {
     RecordEnginePlugin::RecordEnginePlugin()
     {
        
@@ -45,7 +45,7 @@ namespace Axona {
 
     String RecordEnginePlugin::getEngineId() const
     {
-        return "AXONA_RECORD_ENGINE";
+        return "LTX_RECORD_ENGINE";
     }
 
 
@@ -200,7 +200,7 @@ namespace Axona {
         std::stringstream headerPt1;
         headerPt1 << "trial_date " << std::put_time(&tm, "%A, %d %b %Y")
             << "\r\ntrial_time " << std::put_time(&tm, "%H:%M")
-            << "\r\ncreated_by open-ephys-axona-plugin"
+            << "\r\ncreated_by open-ephys-ltx-plugin"
             << "\r\nduration ##########"; // TODO: overwrite this with a real value in seconds at the end of the trial
 
         std::string data = headerPt1.str();
