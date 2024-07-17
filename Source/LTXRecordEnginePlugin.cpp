@@ -106,13 +106,13 @@ namespace LTX {
     {
         // compute duration
         char durationStr[headerMarkerSize + 1];
-        std::chrono::seconds durationSeconds std::chrono::duration_cast<Seconds>(std::chrono::high_resolution_clock::now() - startTime);
+        std::chrono::seconds durationSeconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now() - startTime);
         sprintf(durationStr, headerMarkerFormat, durationSeconds);
 
         // finalise set file
         diskWriteLock.enter();
         fseek(setFile, setHeaderOffsetDuration, SEEK_SET);
-        fwrite(durationStr.c_str(), 1, durationStr.size(), setFile);
+        fwrite(durationStr, 1, headerMarkerSize, setFile);
         fclose(setFile);
 
         // finalise tet files
@@ -122,13 +122,13 @@ namespace LTX {
 
             // write duration
             fseek(tetFiles[i], tetHeaderOffsetDuration, SEEK_SET);
-            fwrite(durationStr.c_str(), 1, durationStr.size(), tetFiles[i]);
+            fwrite(durationStr, 1, headerMarkerSize, tetFiles[i]);
 
             // write num spikes
             char nSpikesStr[headerMarkerSize + 1];
             sprintf(nSpikesStr, headerMarkerFormat, tetSpikeCount[i]);
             fseek(tetFiles[i], tetHeaderOffsetNumSpikes, SEEK_SET);
-            fwrite(nSpikesStr.c_str(), 1, nSpikesStr.size(), tetFiles[i]);
+            fwrite(nSpikesStr, 1, headerMarkerSize, tetFiles[i]);
 
             fclose(tetFiles[i]);
 
@@ -204,7 +204,7 @@ namespace LTX {
         fwrite(spikeBuffer, 1, totalBytes, tetFiles[spike->getChannelIndex()]);  
         
         diskWriteLock.exit();
-        tetSpikeCount[spike->getChannelIndex()]++;
+        tetSpikeCount.getReference(spike->getChannelIndex())++;
     }
 
 
@@ -226,7 +226,7 @@ namespace LTX {
         String fullPath = basePath + ".set";
 
         std::stringstream header;
-        headerPt1 << "trial_date " << std::put_time(&tm, "%A, %d %b %Y")
+        header << "trial_date " << std::put_time(&tm, "%A, %d %b %Y")
             << "\r\ntrial_time " << std::put_time(&tm, "%H:%M")
             << "\r\ncreated_by open-ephys-ltx-plugin"
             << "\r\nduration " << headerMarkerDuration;
