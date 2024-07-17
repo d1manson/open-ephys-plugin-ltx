@@ -30,6 +30,13 @@ namespace LTX {
     constexpr char headerMarkerDuration[] = "####DURATION##";
     static_assert(std::char_traits<char>::length(headerMarkerNumSpikes) == headerMarkerSize, "header marker length should be 14");
     static_assert(std::char_traits<char>::length(headerMarkerDuration) == headerMarkerSize, "header marker length should be 14");
+   
+    int32_t swapEndianness(uint32_t value) {
+        return ((value & 0xFF000000) >> 24) |
+            ((value & 0x00FF0000) >> 8) |
+            ((value & 0x0000FF00) << 8) |
+            ((value & 0x000000FF) << 24);
+    }
 
 
     RecordEnginePlugin::RecordEnginePlugin()
@@ -182,6 +189,7 @@ namespace LTX {
 
 
         uint32_t timestamp = static_cast<uint32_t>(spike->getTimestampInSeconds() * 96000);
+        timestamp = swapEndianness(timestamp);
 
         const float* voltageData = spike->getDataPointer();
         
