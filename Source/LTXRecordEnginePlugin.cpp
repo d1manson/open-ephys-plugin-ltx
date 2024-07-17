@@ -108,6 +108,7 @@ namespace LTX {
         char durationStr[headerMarkerSize + 1];
         std::chrono::seconds durationSeconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now() - startTime);
         sprintf(durationStr, headerMarkerFormat, durationSeconds);
+        LOGC("Finalising headers, with durationStr = ", durationStr);
 
         // finalise set file
         diskWriteLock.enter();
@@ -115,10 +116,12 @@ namespace LTX {
         fwrite(durationStr, 1, headerMarkerSize, setFile);
         fclose(setFile);
 
+
         // finalise tet files
         for (int i = 0; i < tetFiles.size(); i++) {
             constexpr char endToken[] = "\r\ndata_end";
             fwrite(endToken, 1, sizeof(endToken) - 1 /* ignore \0 */, tetFiles[i]);
+
 
             // write duration
             fseek(tetFiles[i], tetHeaderOffsetDuration, SEEK_SET);
@@ -134,6 +137,8 @@ namespace LTX {
 
         }
         diskWriteLock.exit();
+
+        LOGC("Completed writing files.")
 
     }
 
@@ -181,7 +186,6 @@ namespace LTX {
         const float* voltageData = spike->getDataPointer();
         
         const float bitVolts = channel->getChannelBitVolts(0);
-        LOGC("bitVolts: ", bitVolts);
 
         for (int i = 0; i < numChans; i++)
         {
@@ -190,9 +194,8 @@ namespace LTX {
             const float bitVolts = channel->getChannelBitVolts(i);
             for (int j = 0; j < oeSampsPerSpike; j++)
             {
-                // Go from openephys floating point [-something, +something] => [-128, +127]
-                // I think in principle we can do this properly, given the bitVolts, but for now we just do this fairly arbitrary thing
-                float voltage8bit = voltageData[i * oeSampsPerSpike + j] / bitVolts / 500 * 127;
+                // Go from openephys floating point [-something, +something] => [-128, +127]. Not sure why exactly, but dividing by bitVolts * 4 seems to be about right.
+                float voltage8bit = voltageData[i * oeSampsPerSpike + j] / (bitVolts * 4);
                 if (voltage8bit > 127) voltage8bit = 127;
                 if (voltage8bit < -128) voltage8bit = -128;
                 spikeBuffer[i*bytesPerChan + 4 /* timestamp bytes */ + j] = static_cast<int8_t>(voltage8bit);
