@@ -65,11 +65,6 @@ namespace LTX {
         return man;
     }
 
-    String RecordEnginePlugin::getEngineId() const
-    {
-        return "LTX_RECORD_ENGINE";
-    }
-
 
     void RecordEnginePlugin::openFiles(File rootFolder, int experimentNumber, int recordingNumber)
     {
