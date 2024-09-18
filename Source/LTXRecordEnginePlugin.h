@@ -90,13 +90,14 @@ namespace LTX {
         FILE* setFile;
 
         Array<FILE*> tetFiles;
-        Array<long> tetSpikeCount;
+        Array<uint64> tetSpikeCount;
 
         long tetHeaderOffsetNumSpikes;
         long tetHeaderOffsetDuration;
         long setHeaderOffsetDuration;
         
         Array<FILE*> eegFiles;
+        Array<uint64> eegFullSampCount;
         long eegHeaderOffsetNumEEGSamples;
         long eegHeaderOffsetDuration;
 
