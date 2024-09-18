@@ -48,7 +48,7 @@ namespace LTX {
         static RecordEngineManager* getEngineManager();
 
         /** Returns a string that can be used to identify this record engine*/
-        String getEngineId() const;
+        String getEngineId() const override { return "LTX"; }
 
         /** Called when recording starts to open all needed files */
         void openFiles(File rootFolder, int experimentNumber, int recordingNumber);
