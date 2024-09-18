@@ -1,6 +1,21 @@
 # Open Ephys Plugin - LTX Record Engine
 
-The LTX format is broadly compatible with **L**egacy analysis code used with **T**etrode recordings in various rodent labs in the UK, and Europe in particular. However it is _not_ e**X**plicitly defined. 
+The LTX format is broadly compatible with **L**egacy analysis code used with **T**etrode recordings in various rodent labs in the UK, and Europe in particular. However it is _not_ e**X**plicitly defined.
+
+Roughly speaking, all files contain multiple header lines of the format: `key<space>value`, followed by the special token `data_start`, then binary data, and then `data_end`.
+
+It produces:
+
+- experiment_name.set - a file that only contains header info.
+- experiment_name.1, experiment_name.2, ... - tetrode spike data. For each spike, the binary data gives `4 x [4 byte timestamp | 50 one-byte voltage values]`.
+- experiment_name.eeg, experiment_name.eeg2, ... - continuous data downsampled to 250hz and stored as single bytes without any timestamp.
+
+Note that you'll need two separate nodes in openephys to get spikes as well as EEG - any record node with the spikes box checked will produce spikes and the set file only; any record node without the spikes box checked will only produce eeg files.
+
+----
+
+Template readme...
+
 
 # Record Engine Plugin Template
 
