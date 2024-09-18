@@ -77,16 +77,30 @@ namespace LTX {
                                     String text);
 
     private:
+
+        enum RecordMode
+        {
+            SPIKES_AND_SET,
+            EEG_ONLY
+        };
+
+        RecordMode mode;
         std::chrono::time_point<std::chrono::high_resolution_clock> startTime;
 
         FILE* setFile;
 
         Array<FILE*> tetFiles;
-        Array<long> tetSpikeCount;
+        Array<uint64> tetSpikeCount;
 
         long tetHeaderOffsetNumSpikes;
         long tetHeaderOffsetDuration;
         long setHeaderOffsetDuration;
+        
+        Array<FILE*> eegFiles;
+        Array<uint64> eegFullSampCount;
+        long eegHeaderOffsetNumEEGSamples;
+        long eegHeaderOffsetDuration;
+
         void RecordEnginePlugin::openSetFile(String basePath, std::tm start_tm);
 
         /** Mutex for disk writing*/
