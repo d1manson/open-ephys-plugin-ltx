@@ -33,6 +33,11 @@ namespace LTX {
     static_assert(std::char_traits<char>::length(headerMarkerDuration) == headerMarkerSize, "header marker length should be 14");
     static_assert(std::char_traits<char>::length(headerMarkerNumEEGSamples) == headerMarkerSize, "header marker length should be 14");
    
+    constexpr int eegInputSampRate = 30000;
+    constexpr int eegOutputSampRate = 250;
+    constexpr int eegDownsampleBy = eegInputSampRate / eegOutputSampRate;
+
+
     int32_t swapEndianness(uint32_t value) {
         return ((value & 0xFF000000) >> 24) |
             ((value & 0x00FF0000) >> 8) |
@@ -81,6 +86,7 @@ namespace LTX {
             // set file
             {
                 String fullPath = basePath + ".set";
+                LOGC("OPENING FILE: ", fullPath);
 
                 std::stringstream setHeader;
                 setHeader << "trial_date " << std::put_time(&start_tm, "%A, %d %b %Y")
@@ -155,6 +161,7 @@ namespace LTX {
                 diskWriteLock.exit();
 
                 eegFiles.add(eegFile_);
+                eegFullSampCount.add(0);
             }
         }
 
@@ -209,9 +216,9 @@ namespace LTX {
 
                 // write num EEG samples
                 char nEEGSampsStr[headerMarkerSize + 1];
-                /*sprintf(nEEGSampsStr, headerMarkerFormat, eegSampCount[i]);
-                fseek(eegFiles[i], eegHeaderOffsetNumEGGSamples, SEEK_SET);
-                fwrite(nEEGSampsStr, 1, headerMarkerSize, eegFiles[i]);*/
+                sprintf(nEEGSampsStr, headerMarkerFormat, eegFullSampCount[i]/eegDownsampleBy);
+                fseek(eegFiles[i], eegHeaderOffsetNumEEGSamples, SEEK_SET);
+                fwrite(nEEGSampsStr, 1, headerMarkerSize, eegFiles[i]);
 
                 fclose(eegFiles[i]);
             }
@@ -232,47 +239,38 @@ namespace LTX {
             return;
         }
 
-        constexpr int inputSampRate = 30000;
-        constexpr int outputSampRate = 250;
-        constexpr int downsampleBy = inputSampRate / outputSampRate;
         constexpr int outputBufferSize = 32; // actually expect max of 1024/120, which is less than 10
 
         const ContinuousChannel* channel = getContinuousChannel(realChannel);
 
-        if (channel->getSampleRate() != inputSampRate) {
-            LOGE("Expected a sample rate of exactly ", inputSampRate, ", but found ", channel->getSampleRate());
+        if (channel->getSampleRate() != eegInputSampRate) {
+            LOGE("Expected a sample rate of exactly ", eegInputSampRate, ", but found ", channel->getSampleRate());
             return;
         }
 
-        if (size / downsampleBy + 1 > outputBufferSize) {
-            LOGE("size / downsampleBy +1 = ", size, " / ", downsampleBy, " +1 is greater than expected (expected ", outputBufferSize, ")");
+        if (size / eegDownsampleBy + 1 > outputBufferSize) {
+            LOGE("size / downsampleBy +1 = ", size, " / ", eegDownsampleBy, " +1 is greater than expected (expected ", outputBufferSize, ")");
             return;
         }
 
         
         uint8_t eegBuffer[outputBufferSize] = {}; // initialise with zeros
 
-        // i'm assuming that we see every single sample, i.e. nothing gets dropped.
-        // if so, we can track the total sum of size for each eeg channel, and then work out the starting offset based on that.
-        // but for now let's do a crappier version where we just assume the offset is zero (wrongly)...also need to be careful
-        // with the size when doing fwrite at the end.
-
+        uint64 remainder = eegFullSampCount[writeChannel] % eegDownsampleBy;
         const float bitVolts = channel->getBitVolts();
-
-        for(int i =0, j=0; i<size; i+= downsampleBy, j++){
+        int nSampsWritten = 0;
+        for(int i = remainder == 0 ? 0 : eegDownsampleBy - remainder; i<size; i += eegDownsampleBy) {
             float voltage8bit = dataBuffer[i] / (bitVolts * 4);
             if (voltage8bit > 127) voltage8bit = 127;
             if (voltage8bit < -128) voltage8bit = -128;
-            eegBuffer[j] = static_cast<int8_t>(voltage8bit);
+            eegBuffer[nSampsWritten++] = static_cast<int8_t>(voltage8bit);
         }
 
         diskWriteLock.enter();
-
-        fwrite(eegBuffer, 1, size/downsampleBy, eegFiles[writeChannel]);
-
+        fwrite(eegBuffer, 1, nSampsWritten, eegFiles[writeChannel]);
         diskWriteLock.exit();
         
-        //eegSampCount.getReference(writeChannel)++;
+        eegFullSampCount.getReference(writeChannel) += size;
 
     }
 
