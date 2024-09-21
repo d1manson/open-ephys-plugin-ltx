@@ -34,7 +34,7 @@ namespace LTX {
     static_assert(std::char_traits<char>::length(headerMarkerNumEEGSamples) == headerMarkerSize, "header marker length should be 14");
    
     constexpr int eegInputSampRate = 30000;
-    constexpr int eegOutputSampRate = 250;
+    constexpr int eegOutputSampRate = 1000;
     constexpr int eegDownsampleBy = eegInputSampRate / eegOutputSampRate;
 
 
@@ -61,7 +61,6 @@ namespace LTX {
     {
         RecordEngineManager* man = new RecordEngineManager("LTX", "LTX Format",
             &(engineFactory<RecordEnginePlugin>));
-
         return man;
     }
 
@@ -107,7 +106,7 @@ namespace LTX {
                 << "\r\nnum_chans 4"
                 << "\r\ntimebase 96000 hz" // probably not
                 << "\r\nbytes_per_timestamp 4"
-                << "\r\nsamples_per_spike 50" // actually it's not, but we zero-pad when writing tot he file to keep it at 50
+                << "\r\nsamples_per_spike 50" // actually it's not, but we zero-pad when writing to the file to keep it at 50
                 << "\r\nbytes_per_sample 1"
                 << "\r\nspike_format t,ch1,t,ch2,t,ch3,t,ch4"
                 << "\r\nnum_spikes " << headerMarkerNumSpikes
@@ -138,8 +137,8 @@ namespace LTX {
                 << "\r\ncreated_by open-ephys-plugin-ltx"
                 << "\r\nduration " << headerMarkerDuration
                 << "\r\nnum_chans 1"
-                << "\r\nsample_rate 250.0hz"
-                << "\r\nEEG_samples_per_position 5" // well, who knows, but that's how it used to work
+                << "\r\nsample_rate " << eegOutputSampRate << " hz"
+                //<< "\r\nEEG_samples_per_position ???"
                 << "\r\nnum_EEG_samples " << headerMarkerNumEEGSamples
                 << "\r\ndata_start";
             std::string eegHeaderStr = eegHeader.str();
@@ -234,8 +233,8 @@ namespace LTX {
             return;
         }
 
-        constexpr int outputBufferSize = 32; // actually expect max of 1024/120, which is less than 10
 
+        constexpr int outputBufferSize = 64; // actually we expect downsample from 30k to 1k (i.e. by 30), and max input of 1024. So max output of 1024/30 < 37
         const ContinuousChannel* channel = getContinuousChannel(realChannel);
 
         if (channel->getSampleRate() != eegInputSampRate) {
