@@ -25,6 +25,7 @@
 #define RECORDENGINEPLUGIN_H_DEFINED
 
 #include <RecordingLib.h>
+#include "LTXFile.h"
 
 
 #include <stdio.h>
@@ -77,35 +78,23 @@ namespace LTX {
                                     String text);
 
     private:
-
         enum RecordMode
         {
             SPIKES_AND_SET,
-            EEG_ONLY
+            EEG_ONLY,
+            POS_ONLY
         };
 
         RecordMode mode;
         std::chrono::time_point<std::chrono::high_resolution_clock> startTime;
 
-        FILE* setFile;
+        std::unique_ptr<LTXFile> setFile;
 
-        Array<FILE*> tetFiles;
+        Array<std::unique_ptr<LTXFile>> tetFiles;
         Array<uint64> tetSpikeCount;
-
-        long tetHeaderOffsetNumSpikes;
-        long tetHeaderOffsetDuration;
-        long setHeaderOffsetDuration;
         
-        Array<FILE*> eegFiles;
+        Array<std::unique_ptr<LTXFile>> eegFiles;
         Array<uint64> eegFullSampCount;
-        long eegHeaderOffsetNumEEGSamples;
-        long eegHeaderOffsetDuration;
-
-        void RecordEnginePlugin::openSetFile(String basePath, std::tm start_tm);
-
-        /** Mutex for disk writing*/
-        CriticalSection diskWriteLock;
-
     };
 
 }

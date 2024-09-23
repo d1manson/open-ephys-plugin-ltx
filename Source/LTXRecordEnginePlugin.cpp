@@ -24,19 +24,9 @@
 #include "LTXRecordEnginePlugin.h"
 
 namespace LTX {
-    constexpr size_t headerMarkerSize = 14;
-    constexpr char headerMarkerFormat[] = "%-14d"; // this 14 must match the 14 above.
-    constexpr char headerMarkerNumSpikes[] = "###NUM_SPIKES#";
-    constexpr char headerMarkerDuration[] = "####DURATION##";
-    constexpr char headerMarkerNumEEGSamples[] = "###NUM_SAMPS##";
-    static_assert(std::char_traits<char>::length(headerMarkerNumSpikes) == headerMarkerSize, "header marker length should be 14");
-    static_assert(std::char_traits<char>::length(headerMarkerDuration) == headerMarkerSize, "header marker length should be 14");
-    static_assert(std::char_traits<char>::length(headerMarkerNumEEGSamples) == headerMarkerSize, "header marker length should be 14");
-   
     constexpr int eegInputSampRate = 30000;
     constexpr int eegOutputSampRate = 1000;
     constexpr int eegDownsampleBy = eegInputSampRate / eegOutputSampRate;
-
 
     int32_t swapEndianness(uint32_t value) {
         return ((value & 0xFF000000) >> 24) |
@@ -69,92 +59,37 @@ namespace LTX {
     {
         mode = getNumRecordedSpikeChannels() > 0 ? SPIKES_AND_SET : EEG_ONLY; // i can't see how to configure a record node in the openephys interface to *not* recieve continuous data, so we do this hacky thing
 
-        String basePath(rootFolder.getParentDirectory().getFullPathName());
+        std::string basePath = rootFolder.getParentDirectory().getFullPathName().toStdString();
 
-        startTime = std::chrono::high_resolution_clock::now(); // used to calculate duration (not sure if OpenEphys offers an alternative)
-
-        std::time_t t = std::time(nullptr);
-        std::tm start_tm = *std::localtime(&t);
+        HighResTimePoint start_tm = std::chrono::high_resolution_clock::now(); // used to calculate duration (not sure if OpenEphys offers an alternative)
         
+
         if (mode == SPIKES_AND_SET) {
-            // set file
-            {
-                String fullPath = basePath + ".set";
-                LOGC("OPENING FILE: ", fullPath);
-
-                std::stringstream setHeader;
-                setHeader << "trial_date " << std::put_time(&start_tm, "%A, %d %b %Y")
-                    << "\r\ntrial_time " << std::put_time(&start_tm, "%H:%M")
-                    << "\r\ncreated_by open-ephys-ltx-plugin"
-                    << "\r\nduration " << headerMarkerDuration;
-                std::string setHeaderStr = setHeader.str();
-                setHeaderOffsetDuration = setHeaderStr.find(headerMarkerDuration);
-
-                diskWriteLock.enter();
-                FILE* setFile_ = fopen(fullPath.toUTF8(), "wb");
-                fwrite(setHeaderStr.c_str(), sizeof(char), setHeaderStr.size(), setFile_);
-                diskWriteLock.exit();
-                setFile = setFile_;
-            }
-
-            // the tet files all have the same header, that is until we write their num spikes at the end.
-            std::stringstream tetHeader;
-            tetHeader << "trial_date " << std::put_time(&start_tm, "%A, %d %b %Y")
-                << "\r\ntrial_time " << std::put_time(&start_tm, "%H:%M")
-                << "\r\ncreated_by open-ephys-plugin-ltx"
-                << "\r\nduration " << headerMarkerDuration
-                << "\r\nnum_chans 4"
-                << "\r\ntimebase 96000 hz" // probably not
-                << "\r\nbytes_per_timestamp 4"
-                << "\r\nsamples_per_spike 50" // actually it's not, but we zero-pad when writing to the file to keep it at 50
-                << "\r\nbytes_per_sample 1"
-                << "\r\nspike_format t,ch1,t,ch2,t,ch3,t,ch4"
-                << "\r\nnum_spikes " << headerMarkerNumSpikes
-                << "\r\ndata_start";
-            std::string tetHeaderStr = tetHeader.str();
-            tetHeaderOffsetNumSpikes = tetHeaderStr.find(headerMarkerNumSpikes);
-            tetHeaderOffsetDuration = tetHeaderStr.find(headerMarkerDuration);
-
+            setFile = std::make_unique<LTXFile>(LTXFile(basePath, ".set", start_tm));
+            // no custom header
 
             for (int i = 0; i < getNumRecordedSpikeChannels(); i++) {
-                String fullPath = basePath + "." + String(i + 1); // use 1-based indexing for the output file names
-                LOGC("OPENING FILE: ", fullPath);
+                tetFiles.add(std::make_unique<LTXFile>(LTXFile(basePath, "." + std::to_string(i + 1), start_tm)));
+                LTXFile* f = tetFiles.getLast().get();
+                f->AddHeaderValue("num_chans", 4);
+                f->AddHeaderValue("bytes_per_timestamp", 4);
+                f->AddHeaderValue("samples_per_spike", 50);
+                f->AddHeaderValue("bytes_per_sample", 1);
+                f->AddHeaderValue("spike_format", "t,ch1,t,ch2,t,ch3,t,ch4");
+                f->AddHeaderPlaceholder("num_spikes");
+                // maybe need to add dummy header value: f->AddHeaderValue("timebase", "96000 hz");
 
-                diskWriteLock.enter();
-                FILE* tetFile_ = fopen(fullPath.toUTF8(), "wb");
-                fwrite(tetHeaderStr.c_str(), 1, tetHeaderStr.size(), tetFile_);
-                diskWriteLock.exit();
-
-                tetFiles.add(tetFile_);
                 tetSpikeCount.add(0);
             }
         } else { // mode: EEG_ONLY
 
-            // the eeg files all have the same header, that is until we write their num samples at the end (which probably should be the same as it happens)
-            std::stringstream eegHeader;
-            eegHeader << "trial_date " << std::put_time(&start_tm, "%A, %d %b %Y")
-                << "\r\ntrial_time " << std::put_time(&start_tm, "%H:%M")
-                << "\r\ncreated_by open-ephys-plugin-ltx"
-                << "\r\nduration " << headerMarkerDuration
-                << "\r\nnum_chans 1"
-                << "\r\nsample_rate " << eegOutputSampRate << " hz"
-                //<< "\r\nEEG_samples_per_position ???"
-                << "\r\nnum_EEG_samples " << headerMarkerNumEEGSamples
-                << "\r\ndata_start";
-            std::string eegHeaderStr = eegHeader.str();
-            eegHeaderOffsetNumEEGSamples = eegHeaderStr.find(headerMarkerNumEEGSamples);
-            eegHeaderOffsetDuration = eegHeaderStr.find(headerMarkerDuration);
 
-            for (int i = 0; i < getNumRecordedContinuousChannels(); i++) {
-                String fullPath = basePath + ".eeg" + (i == 0 ? "" : String(i + 1)); // .eeg, .eeg2, eeg3, ...
-                LOGC("OPENING FILE: ", fullPath);
-
-                diskWriteLock.enter();
-                FILE* eegFile_ = fopen(fullPath.toUTF8(), "wb");
-                fwrite(eegHeaderStr.c_str(), 1, eegHeaderStr.size(), eegFile_);
-                diskWriteLock.exit();
-
-                eegFiles.add(eegFile_);
+            for (int i = 0; i < getNumRecordedContinuousChannels(); i++){ 
+                eegFiles.add(std::make_unique<LTXFile>(LTXFile(basePath, ".eeg" + (i == 0 ? "" : std::to_string(i + 1)), start_tm)));
+                LTXFile* f = eegFiles.getLast().get();
+                f->AddHeaderValue("num_chans", 1);
+                f->AddHeaderValue("sample_rate", std::to_string(eegOutputSampRate) + " hz");
+                f->AddHeaderPlaceholder("num_EEG_samples");
                 eegFullSampCount.add(0);
             }
         }
@@ -163,61 +98,22 @@ namespace LTX {
 
     void RecordEnginePlugin::closeFiles()
     {
-        // compute duration
-        char durationStr[headerMarkerSize + 1];
-        std::chrono::seconds durationSeconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now() - startTime);
-        sprintf(durationStr, headerMarkerFormat, durationSeconds);
-        LOGC("Finalising headers, with durationStr = ", durationStr);
-
+        HighResTimePoint end_tm = std::chrono::high_resolution_clock::now();
+           
         if (mode == SPIKES_AND_SET) {
-            // finalise set file
-            diskWriteLock.enter();
-            fseek(setFile, setHeaderOffsetDuration, SEEK_SET);
-            fwrite(durationStr, 1, headerMarkerSize, setFile);
-            fclose(setFile);
-
-
-            // finalise tet files
+            setFile->FinaliseFile(end_tm);
+            
             for (int i = 0; i < tetFiles.size(); i++) {
-                constexpr char endToken[] = "\r\ndata_end";
-                fwrite(endToken, 1, sizeof(endToken) - 1 /* ignore \0 */, tetFiles[i]);
-
-
-                // write duration
-                fseek(tetFiles[i], tetHeaderOffsetDuration, SEEK_SET);
-                fwrite(durationStr, 1, headerMarkerSize, tetFiles[i]);
-
-                // write num spikes
-                char nSpikesStr[headerMarkerSize + 1];
-                sprintf(nSpikesStr, headerMarkerFormat, tetSpikeCount[i]);
-                fseek(tetFiles[i], tetHeaderOffsetNumSpikes, SEEK_SET);
-                fwrite(nSpikesStr, 1, headerMarkerSize, tetFiles[i]);
-
-                fclose(tetFiles[i]);
-
+                tetFiles[i]->FinaliseHeaderPlaceholder(tetSpikeCount[i]);
+                tetFiles[i]->FinaliseFile(end_tm);
             }
         }
         else { // mode: EEG_ONLY
-
-            // finalise eeg files
             for (int i = 0; i < eegFiles.size(); i++) {
-                constexpr char endToken[] = "\r\ndata_end";
-                fwrite(endToken, 1, sizeof(endToken) - 1 /* ignore \0 */, eegFiles[i]);
-
-                // write duration
-                fseek(eegFiles[i], eegHeaderOffsetDuration, SEEK_SET);
-                fwrite(durationStr, 1, headerMarkerSize, eegFiles[i]);
-
-                // write num EEG samples
-                char nEEGSampsStr[headerMarkerSize + 1];
-                sprintf(nEEGSampsStr, headerMarkerFormat, eegFullSampCount[i]/eegDownsampleBy);
-                fseek(eegFiles[i], eegHeaderOffsetNumEEGSamples, SEEK_SET);
-                fwrite(nEEGSampsStr, 1, headerMarkerSize, eegFiles[i]);
-
-                fclose(eegFiles[i]);
+                eegFiles[i]->FinaliseHeaderPlaceholder(eegFullSampCount[i] / eegDownsampleBy);
+                eegFiles[i]->FinaliseFile(end_tm);
             }
         }
-        diskWriteLock.exit();
 
         LOGC("Completed writing files.")
 
@@ -252,7 +148,7 @@ namespace LTX {
 
         uint64 remainder = eegFullSampCount[writeChannel] % eegDownsampleBy;
         const float bitVolts = channel->getBitVolts();
-        int nSampsWritten = 0;
+        size_t nSampsWritten = 0;
         for(int i = remainder == 0 ? 0 : eegDownsampleBy - remainder; i<size; i += eegDownsampleBy) {
             float voltage8bit = dataBuffer[i] / (bitVolts * 4);
             if (voltage8bit > 127) voltage8bit = 127;
@@ -260,10 +156,7 @@ namespace LTX {
             eegBuffer[nSampsWritten++] = static_cast<int8_t>(voltage8bit);
         }
 
-        diskWriteLock.enter();
-        fwrite(eegBuffer, 1, nSampsWritten, eegFiles[writeChannel]);
-        diskWriteLock.exit();
-        
+        eegFiles[writeChannel]->WriteBinaryData(eegBuffer, nSampsWritten);        
         eegFullSampCount.getReference(writeChannel) += size;
 
     }
@@ -285,7 +178,6 @@ namespace LTX {
         constexpr int bytesPerChan = 4 /* 4 byte timestamp */ + 50 /* one-byte voltage for 50 samples */;
         constexpr int totalBytes = bytesPerChan * numChans;
         constexpr int oeSampsPerSpike = 40; // seems to be hard-coded as 8+32 = 40
-
 
         const SpikeChannel* channel = getSpikeChannel(electrodeIndex);
         if (channel->getNumChannels() != numChans) {
@@ -322,11 +214,7 @@ namespace LTX {
             }
         }
 
-        diskWriteLock.enter();
-
-        fwrite(spikeBuffer, 1, totalBytes, tetFiles[spike->getChannelIndex()]);  
-        
-        diskWriteLock.exit();
+        tetFiles[spike->getChannelIndex()]->WriteBinaryData(spikeBuffer, totalBytes);
         tetSpikeCount.getReference(spike->getChannelIndex())++;
     }
 
