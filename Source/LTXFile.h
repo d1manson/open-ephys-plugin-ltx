@@ -10,7 +10,6 @@
 #include <mutex>
 
 namespace LTX {
-    using HighResTimePoint = std::chrono::time_point<std::chrono::high_resolution_clock>;
 
     class LTXFile
     {
@@ -31,7 +30,7 @@ namespace LTX {
 
     public:
 
-        LTXFile(const std::string& basePath, const std::string& extension, HighResTimePoint start_tm);
+        LTXFile(const std::string& basePath, const std::string& extension, std::chrono::system_clock::time_point start_tm);
         ~LTXFile();
 
         template <typename T>
@@ -43,21 +42,21 @@ namespace LTX {
 
         void WriteBinaryData(uint8_t* buffer, size_t totalBytes);
 
-        void FinaliseFile(HighResTimePoint end_tm);
+        void FinaliseFile(std::chrono::system_clock::time_point end_tm);
 
     private:
         enum FileWriteStatus {
             HEADERS,
             BINARY,
-            EPILOUGE,
+            EPILOGUE,
             CLOSED
         };
 
-        size_t headerOffsetCustom = 0;
-        size_t headerOffsetDuration = 0;
+        long headerOffsetCustom = 0;
+        long headerOffsetDuration = 0;
         FILE* theFile = nullptr;
         FileWriteStatus status = FileWriteStatus::HEADERS;
-        HighResTimePoint start_tm;
+        std::chrono::system_clock::time_point start_tm;
 
         std::mutex mut;
 

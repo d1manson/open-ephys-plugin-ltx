@@ -1,36 +1,48 @@
 
 #include "LTXFile.h" 
+#include "LTXRecordEnginePlugin.h" // only needed for LOG* methods
+#include <cstring>
+#include <cstdio>
 
 namespace LTX {
-	LTXFile::LTXFile(const std::string& basePath, const std::string& extension, HighResTimePoint start_tm_):
+	constexpr char* data_start_token = "data_start";
+	constexpr char* data_end_token = "data_end";
+	constexpr char* placeholder_token = "              ";
+
+	LTXFile::LTXFile(const std::string& basePath, const std::string& extension, std::chrono::system_clock::time_point start_tm_):
 		start_tm(start_tm_) 
 	{
 		std::lock_guard<std::mutex> lock(mut);
 
 		std::string fullpath = basePath + extension;
 
-		// TODO: log opening fullPath
+		LOGC("Opening file: ", fullpath);
 		
 		theFile = fopen(fullpath.c_str(), "wb");
 
-		/*
-		std::time_t t = std::time(nullptr);
-        std::tm start_tm = *std::localtime(&t);
-        
-		"trial_date " << std::put_time(&start_tm, "%A, %d %b %Y")
-		<< "\r\ntrial_time " << std::put_time(&start_tm, "%H:%M")
-		<< "\r\ncreated_by open-ephys-plugin-ltx"
-		<< "\r\nduration " << headerMarkerDuration
+		// headers: trial date and time
+		std::time_t start_tm_t = std::chrono::system_clock::to_time_t(start_tm);
+        std::tm start_tm_lt = *std::localtime(&start_tm_t); 
+		
+		char strftime_output[50];
+		std::strftime(strftime_output, sizeof(strftime_output), "%A, %d %b %Y", &start_tm_lt);
+		fprintf(theFile, "trial_date %s", strftime_output);
+		std::strftime(strftime_output, sizeof(strftime_output), "%H:%M", &start_tm_lt);
+		fprintf(theFile, "\r\ntrial_time %s", strftime_output);
 
-		*/
-		// write default headers	
+		// headers: hard-coded values
+		fprintf(theFile, "\r\ncreated_by open-ephys-plugin-ltx");
+
+		// headers: placeholder for duration
+		fprintf(theFile, "\r\nduration %s", placeholder_token);
+		headerOffsetDuration = ftell(theFile) - strlen(placeholder_token);
 	}
 	
 	LTXFile::~LTXFile() {
 		std::lock_guard<std::mutex> lock(mut);
 
 		if (status != FileWriteStatus::CLOSED) {
-			// todo: throw error - should have called finalise
+			LOGE("LTXFile destructor called before calling FinaliseFile().");
 			fclose(theFile);
 		}
 	}
@@ -40,32 +52,35 @@ namespace LTX {
 		std::lock_guard<std::mutex> lock(mut);
 
 		if (status != FileWriteStatus::HEADERS) {
-			// todo: throw an error
+			LOGE("AddHeaderValue with status not set to FileWriteStatus::HEADERS (status: ", status, ").");
+			return;
 		}
+		
+		// format the value as a string
+		std::ostringstream oss;
+		oss << value;
 
-		// todo: create string from key and value and newline
-		diskWriteLock.enter();
-		fwrite(setHeaderStr.c_str(), sizeof(char), setHeaderStr.size(), theFile);
-		diskWriteLock.exit();
-
-
+		fprintf(theFile, "\r\n%s %s", key.c_str(), oss.str().c_str());
 	}
+	
+	template void LTXFile::AddHeaderValue<int>(const std::string&, int);
+	template void LTXFile::AddHeaderValue<char const*>(const std::string&, char const*);
+	template void LTXFile::AddHeaderValue<std::string>(const std::string&, std::string);
 	
 	void LTXFile::AddHeaderPlaceholder(const std::string& key) {
 		std::lock_guard<std::mutex> lock(mut);
 
 		if (status != FileWriteStatus::HEADERS) {
-			// todo: throw an error
+			LOGE("AddHeaderPlaceholder with status not set to FileWriteStatus::HEADERS (status: ", status, ").");
+			return;
 		}
 		if (headerOffsetCustom != 0) {
-			// todo: throw an error
+			LOGE("AddHeaderPlaceholder more than once.");
+			return;
 		}
 
-		// todo: store current file position plus key length plus space as placeholderOffset[idx]
-		// 
-		// todo: create string from key and fixed size placeholder and newline
-		
-		//fwrite(setHeaderStr.c_str(), sizeof(char), setHeaderStr.size(), theFile);
+		fprintf(theFile, "\r\n%s %s", key.c_str(), placeholder_token);
+		headerOffsetCustom = ftell(theFile) - strlen(placeholder_token);
 	}
 	
 	template <typename T>
@@ -76,57 +91,72 @@ namespace LTX {
 			status = FileWriteStatus::EPILOGUE;
 		} else if (status == FileWriteStatus::BINARY) {
 			status = FileWriteStatus::EPILOGUE;
-			// todo: write data_end
+			fprintf(theFile, data_end_token);
 		}
 
 		if (status != FileWriteStatus::EPILOGUE) {
-			// todo: throw error
+			LOGE("FinaliseHeaderPlaceholder called with bad status: ", status);
+			return;
 		} else if (headerOffsetCustom == 0) {
-			// todo: throw error
+			LOGE("FinaliseHeaderPlaceholder either called twice, or without prior to AddHeaderPlaceholder.");
+			return;
 		}
 
-		// todo: seek to the spot in placeholderOffsets and write
-	
+		fseek(theFile, headerOffsetCustom, SEEK_SET);
+		
+		std::ostringstream oss;
+		oss << value;
+		
+		// todo: maybe should check the string is less than the length of the placeholder?
+
+		fprintf(theFile, oss.str().c_str());
+
 		headerOffsetCustom = 0;
 	}
+
+	template void LTXFile::FinaliseHeaderPlaceholder<uint64_t>(uint64_t);
+
 
 	void LTXFile::WriteBinaryData(uint8_t* buffer, size_t totalBytes) {
 		std::lock_guard<std::mutex> lock(mut);
 
 		if (status == FileWriteStatus::HEADERS) {
 			status = FileWriteStatus::BINARY;
-			// todo: write data_start
+			fprintf(theFile, data_start_token);
 		}
 
 		if (status != FileWriteStatus::BINARY) {
-			// todo: throw error
+			LOGE("WriteBinaryData called with status not set to HEADERS or BINARY (status: ", status, ")");
+			return;
 		}
 
 		fwrite(buffer, 1, totalBytes, theFile);
 	}
 
 
-	void LTXFile::FinaliseFile(HighResTimePoint end_tm) {
+	void LTXFile::FinaliseFile(std::chrono::system_clock::time_point end_tm) {
 		std::lock_guard<std::mutex> lock(mut);
 
 		if (status == FileWriteStatus::CLOSED) {
-			// todo: throw error
+			LOGE("FinaliseFile called with twice.");
+			return;
+
 		}
 
 		if (status == FileWriteStatus::BINARY) {
-			// todo: write data_end
+			fprintf(theFile, data_end_token);
 		}
 
 		status = FileWriteStatus::CLOSED;
 
-		/*
-		std::chrono::seconds durationSeconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now() - startTime);
-		sprintf(durationStr, headerMarkerFormat, durationSeconds);
-		LOGC("Finalising headers, with durationStr = ", durationStr);
-		*/
+		// finalise the duration header
+		fseek(theFile, headerOffsetDuration, SEEK_SET);
+		std::chrono::seconds durationSeconds = std::chrono::duration_cast<std::chrono::seconds>(end_tm - start_tm);
+		fprintf(theFile, "%d", durationSeconds.count());
 
-		// todo: finalise the duration placeholder
-		fclose(theFile); // something like that
+		fclose(theFile);
 	}
+
+
 
 }

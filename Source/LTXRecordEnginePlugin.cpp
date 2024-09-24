@@ -61,16 +61,17 @@ namespace LTX {
 
         std::string basePath = rootFolder.getParentDirectory().getFullPathName().toStdString();
 
-        HighResTimePoint start_tm = std::chrono::high_resolution_clock::now(); // used to calculate duration (not sure if OpenEphys offers an alternative)
+        std::chrono::system_clock::time_point start_tm = std::chrono::system_clock::now(); // used to calculate duration (not sure if OpenEphys offers an alternative)
         
 
         if (mode == SPIKES_AND_SET) {
-            setFile = std::make_unique<LTXFile>(LTXFile(basePath, ".set", start_tm));
+            setFile = std::make_unique<LTXFile>(basePath, ".set", start_tm);
             // no custom header
 
             for (int i = 0; i < getNumRecordedSpikeChannels(); i++) {
-                tetFiles.add(std::make_unique<LTXFile>(LTXFile(basePath, "." + std::to_string(i + 1), start_tm)));
-                LTXFile* f = tetFiles.getLast().get();
+                
+                tetFiles.push_back(std::make_unique<LTXFile>(basePath, "." + std::to_string(i + 1), start_tm));
+                LTXFile* f = tetFiles.back().get();
                 f->AddHeaderValue("num_chans", 4);
                 f->AddHeaderValue("bytes_per_timestamp", 4);
                 f->AddHeaderValue("samples_per_spike", 50);
@@ -79,18 +80,19 @@ namespace LTX {
                 f->AddHeaderPlaceholder("num_spikes");
                 // maybe need to add dummy header value: f->AddHeaderValue("timebase", "96000 hz");
 
-                tetSpikeCount.add(0);
+                tetSpikeCount.push_back(0);
+                
             }
         } else { // mode: EEG_ONLY
 
-
             for (int i = 0; i < getNumRecordedContinuousChannels(); i++){ 
-                eegFiles.add(std::make_unique<LTXFile>(LTXFile(basePath, ".eeg" + (i == 0 ? "" : std::to_string(i + 1)), start_tm)));
-                LTXFile* f = eegFiles.getLast().get();
+               eegFiles.push_back(std::make_unique<LTXFile>(basePath, ".efg" + (i == 0 ? "" : std::to_string(i + 1)), start_tm));
+                LTXFile* f = eegFiles.back().get();
                 f->AddHeaderValue("num_chans", 1);
                 f->AddHeaderValue("sample_rate", std::to_string(eegOutputSampRate) + " hz");
                 f->AddHeaderPlaceholder("num_EEG_samples");
-                eegFullSampCount.add(0);
+                eegFullSampCount.push_back(0);
+                
             }
         }
 
@@ -98,7 +100,7 @@ namespace LTX {
 
     void RecordEnginePlugin::closeFiles()
     {
-        HighResTimePoint end_tm = std::chrono::high_resolution_clock::now();
+        std::chrono::system_clock::time_point end_tm = std::chrono::system_clock::now();
            
         if (mode == SPIKES_AND_SET) {
             setFile->FinaliseFile(end_tm);
@@ -157,7 +159,7 @@ namespace LTX {
         }
 
         eegFiles[writeChannel]->WriteBinaryData(eegBuffer, nSampsWritten);        
-        eegFullSampCount.getReference(writeChannel) += size;
+        eegFullSampCount[writeChannel] += size;
 
     }
 
@@ -215,7 +217,7 @@ namespace LTX {
         }
 
         tetFiles[spike->getChannelIndex()]->WriteBinaryData(spikeBuffer, totalBytes);
-        tetSpikeCount.getReference(spike->getChannelIndex())++;
+        tetSpikeCount[spike->getChannelIndex()]++;
     }
 
 

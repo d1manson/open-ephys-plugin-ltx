@@ -31,6 +31,7 @@
 #include <stdio.h>
 #include <map>
 #include <chrono>
+#include <vector>
 
 
 namespace LTX {
@@ -90,11 +91,11 @@ namespace LTX {
 
         std::unique_ptr<LTXFile> setFile;
 
-        Array<std::unique_ptr<LTXFile>> tetFiles;
-        Array<uint64> tetSpikeCount;
+        std::vector<std::unique_ptr<LTXFile>> tetFiles;
+        std::vector<uint64> tetSpikeCount;
         
-        Array<std::unique_ptr<LTXFile>> eegFiles;
-        Array<uint64> eegFullSampCount;
+        std::vector<std::unique_ptr<LTXFile>> eegFiles;
+        std::vector<uint64> eegFullSampCount;
     };
 
 }
