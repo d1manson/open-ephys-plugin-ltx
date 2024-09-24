@@ -59,7 +59,9 @@ namespace LTX {
     {
         mode = getNumRecordedSpikeChannels() > 0 ? SPIKES_AND_SET : EEG_ONLY; // i can't see how to configure a record node in the openephys interface to *not* recieve continuous data, so we do this hacky thing
 
-        std::string basePath = rootFolder.getParentDirectory().getFullPathName().toStdString();
+        std::string basePath = rootFolder.getParentDirectory().getFullPathName().toStdString()
+            + (experimentNumber == 1 ? "" : " e" + std::to_string(experimentNumber))
+            + (recordingNumber == 0 ? "" : " r" + std::to_string(recordingNumber+1));
 
         std::chrono::system_clock::time_point start_tm = std::chrono::system_clock::now(); // used to calculate duration (not sure if OpenEphys offers an alternative)
         
@@ -68,8 +70,9 @@ namespace LTX {
             setFile = std::make_unique<LTXFile>(basePath, ".set", start_tm);
             // no custom header
 
+            tetFiles.clear();
+            tetSpikeCount.clear();
             for (int i = 0; i < getNumRecordedSpikeChannels(); i++) {
-                
                 tetFiles.push_back(std::make_unique<LTXFile>(basePath, "." + std::to_string(i + 1), start_tm));
                 LTXFile* f = tetFiles.back().get();
                 f->AddHeaderValue("num_chans", 4);
@@ -81,10 +84,10 @@ namespace LTX {
                 // maybe need to add dummy header value: f->AddHeaderValue("timebase", "96000 hz");
 
                 tetSpikeCount.push_back(0);
-                
             }
         } else { // mode: EEG_ONLY
-
+            eegFiles.clear();
+            eegFullSampCount.clear();
             for (int i = 0; i < getNumRecordedContinuousChannels(); i++){ 
                eegFiles.push_back(std::make_unique<LTXFile>(basePath, ".efg" + (i == 0 ? "" : std::to_string(i + 1)), start_tm));
                 LTXFile* f = eegFiles.back().get();
@@ -92,7 +95,6 @@ namespace LTX {
                 f->AddHeaderValue("sample_rate", std::to_string(eegOutputSampRate) + " hz");
                 f->AddHeaderPlaceholder("num_EEG_samples");
                 eegFullSampCount.push_back(0);
-                
             }
         }
 
@@ -132,7 +134,7 @@ namespace LTX {
         }
 
 
-        constexpr int outputBufferSize = 64; // actually we expect downsample from 30k to 1k (i.e. by 30), and max input of 1024. So max output of 1024/30 < 37
+        constexpr int outputBufferSize = 1024;
         const ContinuousChannel* channel = getContinuousChannel(realChannel);
 
         if (channel->getSampleRate() != eegInputSampRate) {

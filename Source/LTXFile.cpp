@@ -5,7 +5,7 @@
 #include <cstdio>
 
 namespace LTX {
-	constexpr char* data_start_token = "data_start";
+	constexpr char* data_start_token = "\r\ndata_start";
 	constexpr char* data_end_token = "data_end";
 	constexpr char* placeholder_token = "              ";
 
@@ -138,7 +138,7 @@ namespace LTX {
 		std::lock_guard<std::mutex> lock(mut);
 
 		if (status == FileWriteStatus::CLOSED) {
-			LOGE("FinaliseFile called with twice.");
+			LOGE("FinaliseFile called twice.");
 			return;
 
 		}
@@ -152,7 +152,7 @@ namespace LTX {
 		// finalise the duration header
 		fseek(theFile, headerOffsetDuration, SEEK_SET);
 		std::chrono::seconds durationSeconds = std::chrono::duration_cast<std::chrono::seconds>(end_tm - start_tm);
-		fprintf(theFile, "%d", durationSeconds.count());
+		fprintf(theFile, "%lld", durationSeconds.count());
 
 		fclose(theFile);
 	}
