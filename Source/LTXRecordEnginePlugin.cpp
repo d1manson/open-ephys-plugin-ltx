@@ -147,10 +147,10 @@ namespace LTX {
             return;
         }
 
-        
-        uint8_t eegBuffer[outputBufferSize] = {}; // initialise with zeros
-
+        // TODO: can we do better here using intrinsics, similar to float32sToInt8s, but with a take step size?
+        //       maybe some kind of gather op?
         uint64 remainder = eegFullSampCount[writeChannel] % eegDownsampleBy;
+        int8_t eegBuffer[outputBufferSize] = {}; // initialise with zeros
         const float bitVolts = channel->getBitVolts();
         size_t nSampsWritten = 0;
         for(int i = remainder == 0 ? 0 : eegDownsampleBy - remainder; i<size; i += eegDownsampleBy) {
@@ -171,6 +171,20 @@ namespace LTX {
         // write out to a log file of some kind.
     }
 
+
+    template <size_t N>
+    inline void float32sToInt8s(const float* src, int8_t* dest, float factor) {
+        // TODO: for N=40, use SIMD 512bit intrinsics three times, rather than a loop
+        //       may need to copy into a properly aligned float[48] buffer, with zero padding at the end
+        //       should be able to make that static as the zeros will never be overwritten
+        //       can then use 16,16,16 float operations. Think there might even be a builtin way to "saturate" the cast
+        for (int i = 0; i < N; i++) {
+            float v = src[i] * factor;
+            if (v > 127) v = 127;
+            if (v < -128) v = -128;
+            dest[i] = static_cast<int8_t>(v);
+        }
+    }
 
     void RecordEnginePlugin::writeSpike(int electrodeIndex, const Spike* spike)
     {
@@ -193,7 +207,7 @@ namespace LTX {
             return;
         }
 
-        uint8_t spikeBuffer[totalBytes] = {}; // initialise with zeros
+        int8_t spikeBuffer[totalBytes] = {}; // initialise with zeros
 
 
         uint32_t timestamp = static_cast<uint32_t>(spike->getTimestampInSeconds() * 96000);
@@ -208,14 +222,12 @@ namespace LTX {
             std::memcpy(spikeBuffer + bytesPerChan * i, &timestamp, sizeof(uint32_t));
 
             const float bitVolts = channel->getChannelBitVolts(i);
-            for (int j = 0; j < oeSampsPerSpike; j++)
-            {
-                // Go from openephys floating point [-something, +something] => [-128, +127]. Not sure why exactly, but dividing by bitVolts * 4 seems to be about right.
-                float voltage8bit = voltageData[i * oeSampsPerSpike + j] / (bitVolts * 4);
-                if (voltage8bit > 127) voltage8bit = 127;
-                if (voltage8bit < -128) voltage8bit = -128;
-                spikeBuffer[i*bytesPerChan + 4 /* timestamp bytes */ + j] = static_cast<int8_t>(voltage8bit);
-            }
+
+            float32sToInt8s<oeSampsPerSpike>(
+                &voltageData[i * oeSampsPerSpike],
+                &spikeBuffer[i * bytesPerChan + 4 /* timestamp bytes */],
+                1. / (channel->getChannelBitVolts(i) * 4.) //  Not sure why exactly, but dividing by bitVolts * 4 seems to be about right.
+            );
         }
 
         tetFiles[spike->getChannelIndex()]->WriteBinaryData(spikeBuffer, totalBytes);

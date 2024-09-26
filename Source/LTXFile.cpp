@@ -117,7 +117,7 @@ namespace LTX {
 	template void LTXFile::FinaliseHeaderPlaceholder<uint64_t>(uint64_t);
 
 
-	void LTXFile::WriteBinaryData(uint8_t* buffer, size_t totalBytes) {
+	void LTXFile::WriteBinaryData(void* buffer, size_t totalBytes) {
 		std::lock_guard<std::mutex> lock(mut);
 
 		if (status == FileWriteStatus::HEADERS) {

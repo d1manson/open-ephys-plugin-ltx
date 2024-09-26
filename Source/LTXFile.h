@@ -40,7 +40,7 @@ namespace LTX {
         template <typename T>
         void FinaliseHeaderPlaceholder(T value);
 
-        void WriteBinaryData(uint8_t* buffer, size_t totalBytes);
+        void WriteBinaryData(void* buffer, size_t totalBytes);
 
         void FinaliseFile(std::chrono::system_clock::time_point end_tm);
 
