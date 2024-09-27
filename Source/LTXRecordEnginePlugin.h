@@ -81,19 +81,23 @@ namespace LTX {
     private:
         enum RecordMode
         {
+            NONE=-1,
             SPIKES_AND_SET,
             EEG_ONLY,
             POS_ONLY
         };
 
-        RecordMode mode;
+        RecordMode mode = RecordMode::NONE;
         std::chrono::time_point<std::chrono::high_resolution_clock> startTime;
 
         std::unique_ptr<LTXFile> setFile;
 
         std::vector<std::unique_ptr<LTXFile>> tetFiles;
         std::vector<uint64> tetSpikeCount;
-        
+
+        std::unique_ptr<LTXFile> posFile;
+        uint64 posSampCount = 0;
+
         std::vector<std::unique_ptr<LTXFile>> eegFiles;
         std::vector<uint64> eegFullSampCount;
     };

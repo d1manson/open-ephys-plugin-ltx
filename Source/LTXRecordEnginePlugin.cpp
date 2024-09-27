@@ -57,7 +57,22 @@ namespace LTX {
 
     void RecordEnginePlugin::openFiles(File rootFolder, int experimentNumber, int recordingNumber)
     {
-        mode = getNumRecordedSpikeChannels() > 0 ? SPIKES_AND_SET : EEG_ONLY; // i can't see how to configure a record node in the openephys interface to *not* recieve continuous data, so we do this hacky thing
+
+        if (getNumRecordedSpikeChannels() > 0) {
+            mode = RecordMode::SPIKES_AND_SET;
+            LOGC("LTX RecordEngine using mode:SPIKES_AND_SET.");
+        } else if (getNumRecordedContinuousChannels() == 0) {
+            LOGE("No spikes and no continous channels, nothing to record.");
+            mode = RecordMode::NONE;
+            return;
+        } else if (getContinuousChannel(0)->getStreamName() == "bonsai") {
+            mode = RecordMode::POS_ONLY; // first continuous channel is bonsai data, treat as pos
+            LOGC("LTX RecordEngine using mode:POS_ONLY.");
+            return; // for now
+        } else {
+            mode = RecordMode::EEG_ONLY;
+            LOGC("LTX RecordEngine using mode:EEG_ONLY.");
+        }
 
         std::string basePath = rootFolder.getParentDirectory().getFullPathName().toStdString()
             + (experimentNumber == 1 ? "" : " e" + std::to_string(experimentNumber))
@@ -66,7 +81,7 @@ namespace LTX {
         std::chrono::system_clock::time_point start_tm = std::chrono::system_clock::now(); // used to calculate duration (not sure if OpenEphys offers an alternative)
         
 
-        if (mode == SPIKES_AND_SET) {
+        if (mode == RecordMode::SPIKES_AND_SET) {
             setFile = std::make_unique<LTXFile>(basePath, ".set", start_tm);
             // no custom header
 
@@ -85,7 +100,7 @@ namespace LTX {
 
                 tetSpikeCount.push_back(0);
             }
-        } else { // mode: EEG_ONLY
+        } else if (mode == RecordMode::EEG_ONLY){ 
             eegFiles.clear();
             eegFullSampCount.clear();
             for (int i = 0; i < getNumRecordedContinuousChannels(); i++){ 
@@ -96,6 +111,9 @@ namespace LTX {
                 f->AddHeaderPlaceholder("num_EEG_samples");
                 eegFullSampCount.push_back(0);
             }
+        }
+        else if (mode == RecordMode::POS_ONLY) {
+            posFile = std::make_unique<LTXFile>(basePath, ".pos", start_tm);
         }
 
     }
@@ -111,12 +129,14 @@ namespace LTX {
                 tetFiles[i]->FinaliseHeaderPlaceholder(tetSpikeCount[i]);
                 tetFiles[i]->FinaliseFile(end_tm);
             }
-        }
-        else { // mode: EEG_ONLY
+        } else if(mode == RecordMode::EEG_ONLY){
             for (int i = 0; i < eegFiles.size(); i++) {
                 eegFiles[i]->FinaliseHeaderPlaceholder(eegFullSampCount[i] / eegDownsampleBy);
                 eegFiles[i]->FinaliseFile(end_tm);
             }
+        }
+        else if (mode == RecordMode::POS_ONLY) {
+            posFile->FinaliseFile(end_tm);
         }
 
         LOGC("Completed writing files.")
@@ -129,7 +149,7 @@ namespace LTX {
                                                    const double* ftsBuffer,
                                                    int size)
     {
-        if (mode != EEG_ONLY) {
+        if (mode != RecordMode::EEG_ONLY) {
             return;
         }
 
@@ -188,7 +208,7 @@ namespace LTX {
 
     void RecordEnginePlugin::writeSpike(int electrodeIndex, const Spike* spike)
     {
-        if (mode != SPIKES_AND_SET) {
+        if (mode != RecordMode::SPIKES_AND_SET) {
             return;
         }
 
