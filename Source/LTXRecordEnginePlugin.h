@@ -100,6 +100,23 @@ namespace LTX {
         std::unique_ptr<LTXFile> posFile;
         uint64 posSampCount = 0;
 
+        // for now we assume we only recieve one pos sample at a time, but we do recieve each of the 6 values separately
+        // as they are on separate channels. This is a bit of an extra pain, but easily solved by collecting up the values.
+        // Our second assumption is that the channels do come in order so that we know when we've got all the data for a given sample.
+        size_t posNumChans = 0; // we lookup this value from the stream at the start of recording for use during writing the data.
+        #pragma pack(push,1)
+        struct PosSample {
+            uint32_t timestamp;
+            int16_t x1;
+            int16_t y1;
+            int16_t x2;
+            int16_t y2;
+            int16_t numpix1;
+            int16_t numpix2;
+        };
+        #pragma pack(pop)
+        PosSample posSampleBuffer; 
+
         std::vector<std::unique_ptr<LTXFile>> eegFiles;
         std::vector<uint64> eegFullSampCount;
     };

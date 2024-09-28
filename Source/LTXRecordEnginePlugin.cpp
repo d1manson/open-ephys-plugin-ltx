@@ -121,14 +121,14 @@ namespace LTX {
             posFile->AddHeaderValue("bytes_per_timestamp", 4);
             posFile->AddHeaderValue("bytes_per_coord", 2);
             
-            posFile->AddHeaderValue("pos_format", "t, x1, y1, x2, y2, numpix1, numpix2");
+            posFile->AddHeaderValue("pos_format", "t,x1,y1,x2,y2,numpix1,numpix2");
 
             // no idea if this is needed for anything. dummy values...
             posFile->AddHeaderValue("num_colors", 4); 
             posFile->AddHeaderValue("bearing_color_1", 330);
-            posFile->AddHeaderValue("bearing_color_1", 150);
-            posFile->AddHeaderValue("bearing_color_1", 0);
-            posFile->AddHeaderValue("bearing_color_1", 0);
+            posFile->AddHeaderValue("bearing_color_2", 150);
+            posFile->AddHeaderValue("bearing_color_3", 0);
+            posFile->AddHeaderValue("bearing_color_4", 0);
 
             // these probably need some way to be configured properly, but for now hard code
             // not actually sure what they are supposed to mean.
@@ -143,6 +143,11 @@ namespace LTX {
             posFile->AddHeaderValue("max_y", 1000);
 
             posFile->AddHeaderPlaceholder("num_pos_samples");
+            posSampCount = 0;
+            posSampleBuffer = {};
+            posNumChans = getDataStream(0)->getContinuousChannels().size();
+            LOGC("Recording pos file with ", posNumChans, " actual datapoints per sample.");
+
         }
 
     }
@@ -210,12 +215,42 @@ namespace LTX {
             eegFullSampCount[writeChannel] += size;
         }
         else if (mode == RecordMode::POS_ONLY) {
+            // see note in header file about the extra complication here, and the two assumtions we make (one of which we do assert on here).
+            if (size != 1) {
+                LOGE("LTX mode:POS_ONLY currently only supports one pos sample per chunk, but encountered ", size, ". Recording stopped.");
+                CoreServices::setAcquisitionStatus(false); 
+                return; 
+            }
 
-            constexpr int outputBufferSize = 1024;
-            int16_t posBuffer[outputBufferSize / 2]; // note timestamps are 4 bytes, everything else is 2 bytes
-            // todo: actually write something with posFile->WriteBinaryData(...)
-            //LOGC("writeContinuousData() called for pos with writeChannel:", writeChannel, ", realChannel: ", realChannel, ", size: ", size, ", dataBuffer * : ", dataBuffer, ", ftsBuffer * : ", ftsBuffer);
-            posSampCount += size;
+            const float factor = 1024;  // not is a hacky thing for now, todo: decide how best to store these numbers upstream
+
+            switch (writeChannel){
+            case 0:
+                posSampCount++;
+                posSampleBuffer.timestamp = swapEndianness(ftsBuffer[0]); // todo: get serious about timestamps for pos
+                posSampleBuffer.x1 = dataBuffer[0] * factor;
+                break;
+            case 1:
+                posSampleBuffer.y1 = dataBuffer[0] * factor;
+                break;
+            case 2:
+                posSampleBuffer.x2 = dataBuffer[0] * factor;
+                break;
+            case 3:
+                posSampleBuffer.y2 = dataBuffer[0] * factor;
+                break;
+            case 4:
+                posSampleBuffer.numpix1 = dataBuffer[0] * factor;
+                break;
+            case 5:
+                posSampleBuffer.numpix2 = dataBuffer[0] * factor;
+                break;
+            }
+
+            if (writeChannel == posNumChans-1) {
+                posFile->WriteBinaryData(&posSampleBuffer, sizeof posSampleBuffer);                
+            }
+            
         }
 
     }
