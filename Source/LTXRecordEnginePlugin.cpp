@@ -113,6 +113,36 @@ namespace LTX {
         }
         else if (mode == RecordMode::POS_ONLY) {
             posFile = std::make_unique<LTXFile>(basePath, ".pos", start_tm);
+            
+            float sampleRate = getContinuousChannel(0)->getSampleRate();
+            posFile->AddHeaderValue("timebase", std::to_string(sampleRate) + " hz");
+            posFile->AddHeaderValue("sample_rate", std::to_string(sampleRate) + " hz");
+            
+            posFile->AddHeaderValue("bytes_per_timestamp", 4);
+            posFile->AddHeaderValue("bytes_per_coord", 2);
+            
+            posFile->AddHeaderValue("pos_format", "t, x1, y1, x2, y2, numpix1, numpix2");
+
+            // no idea if this is needed for anything. dummy values...
+            posFile->AddHeaderValue("num_colors", 4); 
+            posFile->AddHeaderValue("bearing_color_1", 330);
+            posFile->AddHeaderValue("bearing_color_1", 150);
+            posFile->AddHeaderValue("bearing_color_1", 0);
+            posFile->AddHeaderValue("bearing_color_1", 0);
+
+            // these probably need some way to be configured properly, but for now hard code
+            // not actually sure what they are supposed to mean.
+            posFile->AddHeaderValue("pixels_per_meter", 400);
+            posFile->AddHeaderValue("window_min_x", 0);
+            posFile->AddHeaderValue("window_max_x", 1000);
+            posFile->AddHeaderValue("window_min_y", 0);
+            posFile->AddHeaderValue("window_max_y", 1000);
+            posFile->AddHeaderValue("min_x", 0);
+            posFile->AddHeaderValue("max_x", 1000);
+            posFile->AddHeaderValue("min_y", 0);
+            posFile->AddHeaderValue("max_y", 1000);
+
+            posFile->AddHeaderPlaceholder("num_pos_samples");
         }
 
     }
@@ -134,6 +164,7 @@ namespace LTX {
                 eegFiles[i]->FinaliseFile(end_tm);
             }
         } else if (mode == RecordMode::POS_ONLY) {
+            posFile->FinaliseHeaderPlaceholder(posSampCount);
             posFile->FinaliseFile(end_tm);
         }
 
@@ -147,39 +178,45 @@ namespace LTX {
                                                    const double* ftsBuffer,
                                                    int size)
     {
-        if (mode != RecordMode::EEG_ONLY) {
-            return;
+        if (mode == RecordMode::EEG_ONLY) {
+
+            constexpr int outputBufferSize = 1024;
+            const ContinuousChannel* channel = getContinuousChannel(realChannel);
+
+            if (channel->getSampleRate() != eegInputSampRate) {
+                LOGE("Expected a sample rate of exactly ", eegInputSampRate, ", but found ", channel->getSampleRate());
+                return;
+            }
+
+            if (size / eegDownsampleBy + 1 > outputBufferSize) {
+                LOGE("size / downsampleBy +1 = ", size, " / ", eegDownsampleBy, " +1 is greater than expected (expected ", outputBufferSize, ")");
+                return;
+            }
+
+            // TODO: can we do better here using intrinsics, similar to float32sToInt8s, but with a take step size?
+            //       maybe some kind of gather op?
+            uint64 remainder = eegFullSampCount[writeChannel] % eegDownsampleBy;
+            int8_t eegBuffer[outputBufferSize] = {}; // initialise with zeros
+            const float bitVolts = channel->getBitVolts();
+            size_t nSampsWritten = 0;
+            for (int i = remainder == 0 ? 0 : eegDownsampleBy - remainder; i < size; i += eegDownsampleBy) {
+                float voltage8bit = dataBuffer[i] / (bitVolts * 4);
+                if (voltage8bit > 127) voltage8bit = 127;
+                if (voltage8bit < -128) voltage8bit = -128;
+                eegBuffer[nSampsWritten++] = static_cast<int8_t>(voltage8bit);
+            }
+
+            eegFiles[writeChannel]->WriteBinaryData(eegBuffer, nSampsWritten);
+            eegFullSampCount[writeChannel] += size;
         }
+        else if (mode == RecordMode::POS_ONLY) {
 
-
-        constexpr int outputBufferSize = 1024;
-        const ContinuousChannel* channel = getContinuousChannel(realChannel);
-
-        if (channel->getSampleRate() != eegInputSampRate) {
-            LOGE("Expected a sample rate of exactly ", eegInputSampRate, ", but found ", channel->getSampleRate());
-            return;
+            constexpr int outputBufferSize = 1024;
+            int16_t posBuffer[outputBufferSize / 2]; // note timestamps are 4 bytes, everything else is 2 bytes
+            // todo: actually write something with posFile->WriteBinaryData(...)
+            //LOGC("writeContinuousData() called for pos with writeChannel:", writeChannel, ", realChannel: ", realChannel, ", size: ", size, ", dataBuffer * : ", dataBuffer, ", ftsBuffer * : ", ftsBuffer);
+            posSampCount += size;
         }
-
-        if (size / eegDownsampleBy + 1 > outputBufferSize) {
-            LOGE("size / downsampleBy +1 = ", size, " / ", eegDownsampleBy, " +1 is greater than expected (expected ", outputBufferSize, ")");
-            return;
-        }
-
-        // TODO: can we do better here using intrinsics, similar to float32sToInt8s, but with a take step size?
-        //       maybe some kind of gather op?
-        uint64 remainder = eegFullSampCount[writeChannel] % eegDownsampleBy;
-        int8_t eegBuffer[outputBufferSize] = {}; // initialise with zeros
-        const float bitVolts = channel->getBitVolts();
-        size_t nSampsWritten = 0;
-        for(int i = remainder == 0 ? 0 : eegDownsampleBy - remainder; i<size; i += eegDownsampleBy) {
-            float voltage8bit = dataBuffer[i] / (bitVolts * 4);
-            if (voltage8bit > 127) voltage8bit = 127;
-            if (voltage8bit < -128) voltage8bit = -128;
-            eegBuffer[nSampsWritten++] = static_cast<int8_t>(voltage8bit);
-        }
-
-        eegFiles[writeChannel]->WriteBinaryData(eegBuffer, nSampsWritten);        
-        eegFullSampCount[writeChannel] += size;
 
     }
 
