@@ -78,6 +78,8 @@ namespace LTX {
                                     float sourceSampleRate,
                                     String text);
 
+
+        
     private:
         enum RecordMode
         {

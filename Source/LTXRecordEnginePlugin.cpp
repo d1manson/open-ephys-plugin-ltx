@@ -68,7 +68,6 @@ namespace LTX {
         } else if (getContinuousChannel(0)->getStreamName() == "bonsai") {
             mode = RecordMode::POS_ONLY; // first continuous channel is bonsai data, treat as pos
             LOGC("LTX RecordEngine using mode:POS_ONLY.");
-            return; // for now
         } else {
             mode = RecordMode::EEG_ONLY;
             LOGC("LTX RecordEngine using mode:EEG_ONLY.");
@@ -134,8 +133,7 @@ namespace LTX {
                 eegFiles[i]->FinaliseHeaderPlaceholder(eegFullSampCount[i] / eegDownsampleBy);
                 eegFiles[i]->FinaliseFile(end_tm);
             }
-        }
-        else if (mode == RecordMode::POS_ONLY) {
+        } else if (mode == RecordMode::POS_ONLY) {
             posFile->FinaliseFile(end_tm);
         }
 
