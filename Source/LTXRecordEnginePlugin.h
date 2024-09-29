@@ -110,7 +110,7 @@ namespace LTX {
         size_t posNumChans = 0; // we lookup this value from the stream at the start of recording for use during writing the data.
         size_t posSampRate = 0; // ..and same for this
         struct PosSample {
-            uint32_t timestamp;
+            int32_t timestamp;
             uint16_t x1;
             uint16_t y1;
             uint16_t x2;

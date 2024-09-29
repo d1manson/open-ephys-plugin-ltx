@@ -31,13 +31,17 @@ namespace LTX {
     constexpr int posWindowSize = 1000; // todo: allow user to configure this
     constexpr int posPixelsPerPos = 600; // todo: allow user to configure this
 
-    int32_t swapEndianness(uint32_t value) {
+    int32_t swapEndianness(int32_t value) {
         return ((value & 0xFF000000) >> 24) |
             ((value & 0x00FF0000) >> 8) |
             ((value & 0x0000FF00) << 8) |
             ((value & 0x000000FF) << 24);
     }
-
+    
+    uint16_t swapEndianness(uint16_t value) {
+        return ((value & 0xFF00) >> 8) |
+            ((value & 0x00FF) << 8);
+    }
 
     RecordEnginePlugin::RecordEnginePlugin()
     {
@@ -90,7 +94,13 @@ namespace LTX {
 
         if (mode == RecordMode::SPIKES_AND_SET) {
             setFile = std::make_unique<LTXFile>(basePath, ".set", start_tm);
-            // no custom header
+
+            // need some numbers here. todo: allow configuration
+            setFile->AddHeaderValue("lightBearing_1", 0);
+            setFile->AddHeaderValue("lightBearing_2", 180);
+            setFile->AddHeaderValue("lightBearing_3", 0);
+            setFile->AddHeaderValue("lightBearing_4", 0);
+
 
             tetFiles.clear();
             tetSpikeCount.clear();
@@ -151,6 +161,7 @@ namespace LTX {
             posFile->AddHeaderValue("max_x", posWindowSize);
             posFile->AddHeaderValue("min_y", 0);
             posFile->AddHeaderValue("max_y", posWindowSize);
+           
 
             posFile->AddHeaderPlaceholder("num_pos_samples");
             posSampCount = 0;
@@ -236,23 +247,23 @@ namespace LTX {
                 case 0:
                     posSampCount++;
                     posSamplesBuffer[i].timestamp = swapEndianness(
-                        static_cast<uint32_t>(ftsBuffer[i] * posSampRate));
-                    posSamplesBuffer[i].x1 = dataBuffer[i];
+                        static_cast<int32_t>(ftsBuffer[i] * posSampRate));
+                    posSamplesBuffer[i].x1 = swapEndianness(static_cast<uint16_t>(dataBuffer[i]));
                     break;
                 case 1:
-                    posSamplesBuffer[i].y1 = dataBuffer[i];
+                    posSamplesBuffer[i].y1 = swapEndianness(static_cast<uint16_t>(dataBuffer[i]));
                     break;
                 case 2:
-                    posSamplesBuffer[i].x2 = dataBuffer[i];
+                    posSamplesBuffer[i].x2 = swapEndianness(static_cast<uint16_t>(dataBuffer[i]));
                     break;
                 case 3:
-                    posSamplesBuffer[i].y2 = dataBuffer[i];
+                    posSamplesBuffer[i].y2 = swapEndianness(static_cast<uint16_t>(dataBuffer[i]));
                     break;
                 case 4:
-                    posSamplesBuffer[i].numpix1 = dataBuffer[i];
+                    posSamplesBuffer[i].numpix1 = swapEndianness(static_cast<uint16_t>(dataBuffer[i]));
                     break;
                 case 5:
-                    posSamplesBuffer[i].numpix2 = dataBuffer[i];
+                    posSamplesBuffer[i].numpix2 = swapEndianness(static_cast<uint16_t>(dataBuffer[i]));
                     break;
                 }
             }
@@ -313,8 +324,8 @@ namespace LTX {
         int8_t spikeBuffer[totalBytes] = {}; // initialise with zeros
 
 
-        uint32_t timestamp = swapEndianness(
-            static_cast<uint32_t>(spike->getTimestampInSeconds() * tetTimestampTimebase));
+        int32_t timestamp = swapEndianness(
+            static_cast<int32_t>(spike->getTimestampInSeconds() * tetTimestampTimebase));
 
         const float* voltageData = spike->getDataPointer();
         
