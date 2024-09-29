@@ -24,9 +24,12 @@
 #include "LTXRecordEnginePlugin.h"
 
 namespace LTX {
+    constexpr int tetTimestampTimebase = 96000;
     constexpr int eegInputSampRate = 30000;
     constexpr int eegOutputSampRate = 1000;
     constexpr int eegDownsampleBy = eegInputSampRate / eegOutputSampRate;
+    constexpr int posWindowSize = 1000; // todo: allow user to configure this
+    constexpr int posPixelsPerPos = 600; // todo: allow user to configure this
 
     int32_t swapEndianness(uint32_t value) {
         return ((value & 0xFF000000) >> 24) |
@@ -51,6 +54,11 @@ namespace LTX {
     {
         RecordEngineManager* man = new RecordEngineManager("LTX", "LTX Format",
             &(engineFactory<RecordEnginePlugin>));
+
+        // Not sure how paramaters are supposed to work?
+        //EngineParameter* param;
+        //param = new EngineParameter(EngineParameter::INT, 0, "[pos] Pixels Per Meter", 400);
+        //man->addParameter(param);
         return man;
     }
 
@@ -94,8 +102,9 @@ namespace LTX {
                 f->AddHeaderValue("samples_per_spike", 50);
                 f->AddHeaderValue("bytes_per_sample", 1);
                 f->AddHeaderValue("spike_format", "t,ch1,t,ch2,t,ch3,t,ch4");
+                f->AddHeaderValue("sample_rate", std::to_string(getSpikeChannel(i)->getSampleRate()) + " hz"); 
+                f->AddHeaderValue("timebase", std::to_string(tetTimestampTimebase) + " hz");
                 f->AddHeaderPlaceholder("num_spikes");
-                // maybe need to add dummy header value: f->AddHeaderValue("timebase", "96000 hz");
 
                 tetSpikeCount.push_back(0);
             }
@@ -114,9 +123,9 @@ namespace LTX {
         else if (mode == RecordMode::POS_ONLY) {
             posFile = std::make_unique<LTXFile>(basePath, ".pos", start_tm);
             
-            float sampleRate = getContinuousChannel(0)->getSampleRate();
-            posFile->AddHeaderValue("timebase", std::to_string(sampleRate) + " hz");
-            posFile->AddHeaderValue("sample_rate", std::to_string(sampleRate) + " hz");
+            posSampRate = getContinuousChannel(0)->getSampleRate();
+            posFile->AddHeaderValue("timebase", std::to_string(posSampRate) + " hz");
+            posFile->AddHeaderValue("sample_rate", std::to_string(posSampRate) + " hz");
             
             posFile->AddHeaderValue("bytes_per_timestamp", 4);
             posFile->AddHeaderValue("bytes_per_coord", 2);
@@ -130,21 +139,22 @@ namespace LTX {
             posFile->AddHeaderValue("bearing_color_3", 0);
             posFile->AddHeaderValue("bearing_color_4", 0);
 
-            // these probably need some way to be configured properly, but for now hard code
-            // not actually sure what they are supposed to mean.
-            posFile->AddHeaderValue("pixels_per_meter", 400);
+            // not actually sure what they are supposed to mean. Presumably some of them
+            // might need to be computed based on the observed data and set at the end of the trial
+            // we also want the user to be able to configure some of them in the UX, somehow.
+            posFile->AddHeaderValue("pixels_per_meter", posPixelsPerPos);
             posFile->AddHeaderValue("window_min_x", 0);
-            posFile->AddHeaderValue("window_max_x", 1000);
+            posFile->AddHeaderValue("window_max_x", posWindowSize);
             posFile->AddHeaderValue("window_min_y", 0);
-            posFile->AddHeaderValue("window_max_y", 1000);
+            posFile->AddHeaderValue("window_max_y", posWindowSize);
             posFile->AddHeaderValue("min_x", 0);
-            posFile->AddHeaderValue("max_x", 1000);
+            posFile->AddHeaderValue("max_x", posWindowSize);
             posFile->AddHeaderValue("min_y", 0);
-            posFile->AddHeaderValue("max_y", 1000);
+            posFile->AddHeaderValue("max_y", posWindowSize);
 
             posFile->AddHeaderPlaceholder("num_pos_samples");
             posSampCount = 0;
-            posSampleBuffer = {};
+            std::memset(posSamplesBuffer, 0, sizeof(posSamplesBuffer));
             posNumChans = getDataStream(0)->getContinuousChannels().size();
             LOGC("Recording pos file with ", posNumChans, " actual datapoints per sample.");
 
@@ -215,40 +225,43 @@ namespace LTX {
             eegFullSampCount[writeChannel] += size;
         }
         else if (mode == RecordMode::POS_ONLY) {
-            // see note in header file about the extra complication here, and the two assumtions we make (one of which we do assert on here).
-            if (size != 1) {
-                LOGE("LTX mode:POS_ONLY currently only supports one pos sample per chunk, but encountered ", size, ". Recording stopped.");
+            if (size > maxPosSamplesPerChunk) {
+                LOGE("LTX mode:POS_ONLY currently only supports ", maxPosSamplesPerChunk, " samples per chunk, but encountered ", size, ". Recording stopped.");
                 CoreServices::setAcquisitionStatus(false); 
                 return; 
             }
 
-            const float factor = 1024;  // not is a hacky thing for now, todo: decide how best to store these numbers upstream
-
-            switch (writeChannel){
-            case 0:
-                posSampCount++;
-                posSampleBuffer.timestamp = swapEndianness(ftsBuffer[0]); // todo: get serious about timestamps for pos
-                posSampleBuffer.x1 = dataBuffer[0] * factor;
-                break;
-            case 1:
-                posSampleBuffer.y1 = dataBuffer[0] * factor;
-                break;
-            case 2:
-                posSampleBuffer.x2 = dataBuffer[0] * factor;
-                break;
-            case 3:
-                posSampleBuffer.y2 = dataBuffer[0] * factor;
-                break;
-            case 4:
-                posSampleBuffer.numpix1 = dataBuffer[0] * factor;
-                break;
-            case 5:
-                posSampleBuffer.numpix2 = dataBuffer[0] * factor;
-                break;
+            for (int i = 0; i < maxPosSamplesPerChunk && i<size; i++) {
+                switch (writeChannel) {
+                case 0:
+                    posSampCount++;
+                    posSamplesBuffer[i].timestamp = swapEndianness(
+                        static_cast<uint32_t>(ftsBuffer[i] * posSampRate));
+                    posSamplesBuffer[i].x1 = dataBuffer[i];
+                    break;
+                case 1:
+                    posSamplesBuffer[i].y1 = dataBuffer[i];
+                    break;
+                case 2:
+                    posSamplesBuffer[i].x2 = dataBuffer[i];
+                    break;
+                case 3:
+                    posSamplesBuffer[i].y2 = dataBuffer[i];
+                    break;
+                case 4:
+                    posSamplesBuffer[i].numpix1 = dataBuffer[i];
+                    break;
+                case 5:
+                    posSamplesBuffer[i].numpix2 = dataBuffer[i];
+                    break;
+                }
             }
 
             if (writeChannel == posNumChans-1) {
-                posFile->WriteBinaryData(&posSampleBuffer, sizeof posSampleBuffer);                
+                // Note we are assuming that channels came in order so that when we get the last one
+                // we've seen them all, and that they all had the same size. Hopefully a safe assumption,
+                // but i haven't actually checked the existing implementation in the core codebase.
+                posFile->WriteBinaryData(&posSamplesBuffer, sizeof(PosSample) * size);                
             }
             
         }
@@ -300,8 +313,8 @@ namespace LTX {
         int8_t spikeBuffer[totalBytes] = {}; // initialise with zeros
 
 
-        uint32_t timestamp = static_cast<uint32_t>(spike->getTimestampInSeconds() * 96000);
-        timestamp = swapEndianness(timestamp);
+        uint32_t timestamp = swapEndianness(
+            static_cast<uint32_t>(spike->getTimestampInSeconds() * tetTimestampTimebase));
 
         const float* voltageData = spike->getDataPointer();
         

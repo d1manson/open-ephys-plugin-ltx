@@ -36,6 +36,9 @@
 
 namespace LTX {
 
+    constexpr int maxPosSamplesPerChunk = 8; // used fixed size buffer to collect the data
+
+
     class RecordEnginePlugin : public RecordEngine
     {
     public:
@@ -97,14 +100,15 @@ namespace LTX {
         std::vector<std::unique_ptr<LTXFile>> tetFiles;
         std::vector<uint64> tetSpikeCount;
 
+        std::vector<std::unique_ptr<LTXFile>> eegFiles;
+        std::vector<uint64> eegFullSampCount;
+
         std::unique_ptr<LTXFile> posFile;
         uint64 posSampCount = 0;
 
-        // for now we assume we only recieve one pos sample at a time, but we do recieve each of the 6 values separately
-        // as they are on separate channels. This is a bit of an extra pain, but easily solved by collecting up the values.
-        // Our second assumption is that the channels do come in order so that we know when we've got all the data for a given sample.
+        // We assume that the channels come in order so that we know when we've got all the data for a given batch of samples.
         size_t posNumChans = 0; // we lookup this value from the stream at the start of recording for use during writing the data.
-        #pragma pack(push,1)
+        size_t posSampRate = 0; // ..and same for this
         struct PosSample {
             uint32_t timestamp;
             int16_t x1;
@@ -114,11 +118,8 @@ namespace LTX {
             int16_t numpix1;
             int16_t numpix2;
         };
-        #pragma pack(pop)
-        PosSample posSampleBuffer; 
-
-        std::vector<std::unique_ptr<LTXFile>> eegFiles;
-        std::vector<uint64> eegFullSampCount;
+        static_assert(sizeof(PosSample) == 1*4 + 6*2, "PosSample should be laid out in memory as 1*4+6*2 bytes, with no padding");
+        PosSample posSamplesBuffer[maxPosSamplesPerChunk];
     };
 
 }
