@@ -133,16 +133,16 @@ namespace LTX {
             posFile->AddHeaderValue("pos_format", "t,x1,y1,x2,y2,numpix1,numpix2");
 
             // no idea if this is needed for anything. dummy values...
-            posFile->AddHeaderValue("num_colors", 4); 
-            posFile->AddHeaderValue("bearing_color_1", 330);
-            posFile->AddHeaderValue("bearing_color_2", 150);
-            posFile->AddHeaderValue("bearing_color_3", 0);
-            posFile->AddHeaderValue("bearing_color_4", 0);
+            posFile->AddHeaderValue("num_colours", 4); 
+            posFile->AddHeaderValue("bearing_colour_1", 330);
+            posFile->AddHeaderValue("bearing_colour_2", 150);
+            posFile->AddHeaderValue("bearing_colour_3", 0);
+            posFile->AddHeaderValue("bearing_colour_4", 0);
 
             // not actually sure what they are supposed to mean. Presumably some of them
             // might need to be computed based on the observed data and set at the end of the trial
             // we also want the user to be able to configure some of them in the UX, somehow.
-            posFile->AddHeaderValue("pixels_per_meter", posPixelsPerPos);
+            posFile->AddHeaderValue("pixels_per_metre", posPixelsPerPos);
             posFile->AddHeaderValue("window_min_x", 0);
             posFile->AddHeaderValue("window_max_x", posWindowSize);
             posFile->AddHeaderValue("window_min_y", 0);

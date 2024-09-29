@@ -111,14 +111,15 @@ namespace LTX {
         size_t posSampRate = 0; // ..and same for this
         struct PosSample {
             uint32_t timestamp;
-            int16_t x1;
-            int16_t y1;
-            int16_t x2;
-            int16_t y2;
-            int16_t numpix1;
-            int16_t numpix2;
+            uint16_t x1;
+            uint16_t y1;
+            uint16_t x2;
+            uint16_t y2;
+            uint16_t numpix1;
+            uint16_t numpix2;
+            char padding[4];
         };
-        static_assert(sizeof(PosSample) == 1*4 + 6*2, "PosSample should be laid out in memory as 1*4+6*2 bytes, with no padding");
+        static_assert(sizeof(PosSample) == 4+8*2, "PosSample should be laid out in memory as 4+8*2 bytes.");
         PosSample posSamplesBuffer[maxPosSamplesPerChunk];
     };
 

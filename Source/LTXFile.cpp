@@ -6,7 +6,7 @@
 
 namespace LTX {
 	constexpr char* data_start_token = "\r\ndata_start";
-	constexpr char* data_end_token = "data_end";
+	constexpr char* data_end_token = "\r\ndata_end";
 	constexpr char* placeholder_token = "              ";
 
 	LTXFile::LTXFile(const std::string& basePath, const std::string& extension, std::chrono::system_clock::time_point start_tm_):
