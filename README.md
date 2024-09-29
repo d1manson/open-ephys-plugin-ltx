@@ -1,6 +1,7 @@
 # Open Ephys Plugin - LTX Record Engine
 
-The LTX format is broadly compatible with **L**egacy analysis code used with **T**etrode recordings in various rodent labs in the UK, and Europe in particular. However it is _not_ e**X**plicitly defined.
+The LTX format is broadly compatible with **L**egacy analysis code used with **T**etrode recordings in various rodent labs. However it is _not_ e**X**plicitly defined.
+Amongst other pre-existing tools, the LTX files should be viewable within the [Waveform GUI](https://github.com/d1manson/waveform).
 
 Roughly speaking, all files contain multiple header lines of the format: `key<space>value`, followed by the special token `data_start`, then binary data, and then `data_end`.
 
@@ -8,9 +9,15 @@ It produces:
 
 - experiment_name.set - a file that only contains header info.
 - experiment_name.1, experiment_name.2, ... - tetrode spike data. For each spike, the binary data gives `4 x [4 byte timestamp | 50 one-byte voltage values]`.
-- experiment_name.eeg, experiment_name.eeg2, ... - continuous data downsampled to 250hz and stored as single bytes without any timestamp.
+- experiment_name.efg, experiment_name.efg2, ... - continuous data downsampled to 1kHz and stored as single bytes without any timestamp.
+- experiment_name.pos - position data. Expects 6 continuous data channels from bonsai containing x1,y1,x2,y2,numpix1,numpix2 respectively. Currently assumes
+   the x and y values are within the range [0,1000]. To get the data from bonsai into Openephys, use the separate [bonsai plugin](https://github.com/d1manson/open-ephys-plugin-bonsai)
+   (note there are a few open ephys plugins that aim to stich together Bonsai and Openephys, so make sure you are using the right one).
 
-Note that you'll need two separate nodes in openephys to get spikes as well as EEG - any record node with the spikes box checked will produce spikes and the set file only; any record node without the spikes box checked will only produce eeg files.
+Note that you'll need three separate nodes in openephys, one to create set+tet file, one for eeg, and one for pos.
+
+**WARNING**: this does pretty much work, but the timestamp logic still needs to be ironed out, and there's currently no way to configure anything here.
+
 
 ----
 
