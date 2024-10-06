@@ -72,17 +72,17 @@ namespace LTX {
 
         if (getNumRecordedSpikeChannels() > 0) {
             mode = RecordMode::SPIKES_AND_SET;
-            LOGC("LTX RecordEngine using mode:SPIKES_AND_SET.");
+            LOGC("LTX RecordEngine using mode:SPIKES_AND_SET (", mode, ").");
         } else if (getNumRecordedContinuousChannels() == 0) {
             LOGE("No spikes and no continous channels, nothing to record.");
             mode = RecordMode::NONE;
             return;
         } else if (getContinuousChannel(0)->getStreamName() == "bonsai") {
             mode = RecordMode::POS_ONLY; // first continuous channel is bonsai data, treat as pos
-            LOGC("LTX RecordEngine using mode:POS_ONLY.");
+            LOGC("LTX RecordEngine using mode:POS_ONLY (", mode, ").");
         } else {
             mode = RecordMode::EEG_ONLY;
-            LOGC("LTX RecordEngine using mode:EEG_ONLY.");
+            LOGC("LTX RecordEngine using mode:EEG_ONLY (", mode, ").");
         }
 
         std::string basePath = rootFolder.getParentDirectory().getFullPathName().toStdString()
@@ -171,6 +171,8 @@ namespace LTX {
 
         }
 
+        firstTimestamp = TIMESTAMP_UNINITIALIZED; // gets initialised using the first continuous data below
+
     }
 
     void RecordEnginePlugin::closeFiles()
@@ -204,11 +206,16 @@ namespace LTX {
                                                    const double* ftsBuffer,
                                                    int size)
     {
+        if (firstTimestamp == TIMESTAMP_UNINITIALIZED) {
+            firstTimestamp = ftsBuffer[0]; // used in this function for POS, and further down for SPIKES
+            LOGC("MODE:", mode, " - firstTimestamp initialised to ", firstTimestamp);
+        }
+
         if (mode == RecordMode::EEG_ONLY) {
 
             constexpr int outputBufferSize = 1024;
             const ContinuousChannel* channel = getContinuousChannel(realChannel);
-
+            
             if (channel->getSampleRate() != eegInputSampRate) {
                 LOGE("Expected a sample rate of exactly ", eegInputSampRate, ", but found ", channel->getSampleRate());
                 return;
@@ -247,7 +254,7 @@ namespace LTX {
                 case 0:
                     posSampCount++;
                     posSamplesBuffer[i].timestamp = swapEndianness(
-                        static_cast<int32_t>(ftsBuffer[i] * posSampRate));
+                        static_cast<int32_t>((ftsBuffer[i]-firstTimestamp) * posSampRate));
                     posSamplesBuffer[i].x1 = swapEndianness(static_cast<uint16_t>(dataBuffer[i]));
                     break;
                 case 1:
@@ -281,8 +288,8 @@ namespace LTX {
 
     void RecordEnginePlugin::writeEvent(int eventChannel, const EventPacket& event)
     {
-        // Not sure what an 'event' is in this context, i don't think we want to write anything, but maybe we could
-        // write out to a log file of some kind.
+        // We don't currently support writing TTL data here. If you want TTL data use another
+        // record engine for that.
     }
 
 
@@ -320,12 +327,16 @@ namespace LTX {
             LOGE("Expected exactly 40 samples per spike, which will be padded out to 50, but found ", channel->getTotalSamples());
             return;
         }
+        if (firstTimestamp == TIMESTAMP_UNINITIALIZED) {
+            LOGE("writeSpike() called before writeContinuousData() has had a chance to initialise the firstTimestamp value. Hopefully this is a rare occurance and you can just start recording again.");
+            CoreServices::setAcquisitionStatus(false);
+            return;
+        }
 
         int8_t spikeBuffer[totalBytes] = {}; // initialise with zeros
 
-
-        int32_t timestamp = swapEndianness(
-            static_cast<int32_t>(spike->getTimestampInSeconds() * tetTimestampTimebase));
+        int32_t timestamp = swapEndianness(static_cast<int32_t>(
+            (spike->getTimestampInSeconds() - firstTimestamp) * tetTimestampTimebase));
 
         const float* voltageData = spike->getDataPointer();
         
@@ -351,11 +362,13 @@ namespace LTX {
 
     void RecordEnginePlugin::writeTimestampSyncText(
         uint64 streamId,
-        int64 timestamp,
+        int64 sampleNumber,
         float sourceSampleRate,
         String text)
     {
-        // maybe we could write this to the header of each file?
+        // This didn't seem to be especially useful as it gives the sampleNumber not the timestamp;
+        // we use the first call to writeContinuousData() to set the firstTimestamp value instead.
+        // LOGC("MODE:", mode, ":  writeTimestampSyncText(streamId = ", streamId, ", timestamp = ", timestamp, ", sourceSampleRate = ", sourceSampleRate, ", ", text, ")");
     }
 
 

@@ -91,9 +91,10 @@ namespace LTX {
             EEG_ONLY,
             POS_ONLY
         };
+        const double TIMESTAMP_UNINITIALIZED = -1;
 
         RecordMode mode = RecordMode::NONE;
-        std::chrono::time_point<std::chrono::high_resolution_clock> startTime;
+        double firstTimestamp = TIMESTAMP_UNINITIALIZED;
 
         std::unique_ptr<LTXFile> setFile;
 
