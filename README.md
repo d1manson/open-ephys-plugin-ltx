@@ -10,9 +10,12 @@ It produces:
 - experiment_name.set - a file that only contains header info.
 - experiment_name.1, experiment_name.2, ... - tetrode spike data. For each spike, the binary data gives `4 x [4 byte timestamp | 50 one-byte voltage values]`.
 - experiment_name.efg, experiment_name.efg2, ... - continuous data downsampled to 1kHz and stored as single bytes without any timestamp.
-- experiment_name.pos - position data. Expects 6 continuous data channels from bonsai containing x1,y1,x2,y2,numpix1,numpix2 respectively. Currently assumes
-   the x and y values are within the range [0,1000]. To get the data from bonsai into Openephys, use the separate [bonsai plugin](https://github.com/d1manson/open-ephys-plugin-bonsai)
-   (note there are a few open ephys plugins that aim to stich together Bonsai and Openephys, so make sure you are using the right one).
+- experiment_name.pos - position data. Expects 7 continuous data channels from bonsai containing timestamp, and then x1,y1,x2,y2,numpix1,numpix2 respectively.
+  Currently assumes the x and y values are within the range [0,1000]. To get the data from bonsai into Openephys, use the separate [bonsai plugin](https://github.com/d1manson/open-ephys-plugin-bonsai)
+   (note there are a few open ephys plugins that aim to stich together Bonsai and Openephys, so make sure you are using the right one). The timestamp used here is
+  not using the proper timestamp machinery of openephys, it's literally a timestamp within a 32bit float channel. There is a slight problem with this
+  in that the precision of 32 bit floats starts to degrade above 20,000 (5hs in seconds); at that point there are about 5 representable values in the third decimal place,
+- for each value in the second decimal place. But hopefully that's enough here. Note that the bonsai plugin does start from zero for the first timestamp it sees.
 
 Note that you'll need three separate nodes in openephys, one to create set+tet file, one for eeg, and one for pos.
 

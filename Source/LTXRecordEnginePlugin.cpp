@@ -131,6 +131,13 @@ namespace LTX {
             }
         }
         else if (mode == RecordMode::POS_ONLY) {
+            if (getDataStream(0)->getContinuousChannels().size() != 7) {
+                LOGE("For LTX pos, require exactly 7 float channels from Bonsai. The first is a timestamp, and then x1,y1,x2,y2,numpix1,numpix2. ",
+                    "However, received ", getDataStream(0)->getContinuousChannels().size(), " channels.");
+                CoreServices::setAcquisitionStatus(false);
+                return;
+            }
+
             posFile = std::make_unique<LTXFile>(basePath, ".pos", start_tm);
             
             posSampRate = getContinuousChannel(0)->getSampleRate();
@@ -206,12 +213,17 @@ namespace LTX {
                                                    const double* ftsBuffer,
                                                    int size)
     {
-        if (firstTimestamp == TIMESTAMP_UNINITIALIZED) {
-            firstTimestamp = ftsBuffer[0]; // used in this function for POS, and further down for SPIKES
-            LOGC("MODE:", mode, " - firstTimestamp initialised to ", firstTimestamp);
-        }
 
-        if (mode == RecordMode::EEG_ONLY) {
+        if (mode == RecordMode::SPIKES_AND_SET ) {
+            // see the separate writeSpike() function below for where spikes are actually recorded.
+            // here we just need to grab the first timestamp on the continuous stream so we can acurately
+            // timestamp the spikes as they are written.
+            if (firstTimestamp == TIMESTAMP_UNINITIALIZED) {
+                firstTimestamp = ftsBuffer[0];
+                LOGC("SPIKES: firstTimestamp initialised to ", firstTimestamp);
+            } 
+        } else if (mode == RecordMode::EEG_ONLY) {
+            // no timestamps written in the EEG file at all
 
             constexpr int outputBufferSize = 1024;
             const ContinuousChannel* channel = getContinuousChannel(realChannel);
@@ -243,10 +255,24 @@ namespace LTX {
             eegFullSampCount[writeChannel] += size;
         }
         else if (mode == RecordMode::POS_ONLY) {
+
             if (size > maxPosSamplesPerChunk) {
                 LOGE("LTX mode:POS_ONLY currently only supports ", maxPosSamplesPerChunk, " samples per chunk, but encountered ", size, ". Recording stopped.");
                 CoreServices::setAcquisitionStatus(false); 
                 return; 
+            }
+
+
+            if (firstTimestamp == TIMESTAMP_UNINITIALIZED && writeChannel == 0) { 
+               firstTimestamp = dataBuffer[0];
+               if (firstTimestamp > 4*60*60 /* 4 hours in seconds = 14400 */) {
+                   LOGE("POS recording started with 32bit floating point timestamp: ", firstTimestamp, " seconds. That's quite large; you won't get many decimal places of precision. "
+                       "Stopping acquistion now. When you restart acquisition, the timestamp will begin at 0seconds, which will work much better.");
+                   // note this is talking about the timestamp we recieve from the Bonsai source; the timestamps we record below will always start from zero, but they will inherit
+                   // the precision provided by the Bonsai source, hence the check here. Note we are checking at the start of the recording, so we use an even more conservative threshold.
+                   CoreServices::setAcquisitionStatus(false);
+                   return;
+               }
             }
 
             for (int i = 0; i < maxPosSamplesPerChunk && i<size; i++) {
@@ -254,22 +280,24 @@ namespace LTX {
                 case 0:
                     posSampCount++;
                     posSamplesBuffer[i].timestamp = swapEndianness(
-                        static_cast<int32_t>((ftsBuffer[i]-firstTimestamp) * posSampRate));
+                        static_cast<int32_t>((dataBuffer[i] - firstTimestamp) * posSampRate)); // TODO: use a timebase that's higher than posSampRate for more precision
+                    break;
+                case 1:                   
                     posSamplesBuffer[i].x1 = swapEndianness(static_cast<uint16_t>(dataBuffer[i]));
                     break;
-                case 1:
+                case 2:
                     posSamplesBuffer[i].y1 = swapEndianness(static_cast<uint16_t>(dataBuffer[i]));
                     break;
-                case 2:
+                case 3:
                     posSamplesBuffer[i].x2 = swapEndianness(static_cast<uint16_t>(dataBuffer[i]));
                     break;
-                case 3:
+                case 4:
                     posSamplesBuffer[i].y2 = swapEndianness(static_cast<uint16_t>(dataBuffer[i]));
                     break;
-                case 4:
+                case 5:
                     posSamplesBuffer[i].numpix1 = swapEndianness(static_cast<uint16_t>(dataBuffer[i]));
                     break;
-                case 5:
+                case 6:
                     posSamplesBuffer[i].numpix2 = swapEndianness(static_cast<uint16_t>(dataBuffer[i]));
                     break;
                 }
