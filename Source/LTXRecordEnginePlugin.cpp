@@ -24,7 +24,7 @@
 #include "LTXRecordEnginePlugin.h"
 
 namespace LTX {
-    constexpr int tetTimestampTimebase = 96000;
+    constexpr int timestampTimebase = 96000;
     constexpr int eegInputSampRate = 30000;
     constexpr int eegOutputSampRate = 1000;
     constexpr int eegDownsampleBy = eegInputSampRate / eegOutputSampRate;
@@ -113,7 +113,7 @@ namespace LTX {
                 f->AddHeaderValue("bytes_per_sample", 1);
                 f->AddHeaderValue("spike_format", "t,ch1,t,ch2,t,ch3,t,ch4");
                 f->AddHeaderValue("sample_rate", std::to_string(getSpikeChannel(i)->getSampleRate()) + " hz"); 
-                f->AddHeaderValue("timebase", std::to_string(tetTimestampTimebase) + " hz");
+                f->AddHeaderValue("timebase", std::to_string(timestampTimebase) + " hz");
                 f->AddHeaderPlaceholder("num_spikes");
 
                 tetSpikeCount.push_back(0);
@@ -141,7 +141,7 @@ namespace LTX {
             posFile = std::make_unique<LTXFile>(basePath, ".pos", start_tm);
             
             posSampRate = getContinuousChannel(0)->getSampleRate();
-            posFile->AddHeaderValue("timebase", std::to_string(posSampRate) + " hz");
+            posFile->AddHeaderValue("timebase", std::to_string(timestampTimebase) + " hz");
             posFile->AddHeaderValue("sample_rate", std::to_string(posSampRate) + " hz");
             
             posFile->AddHeaderValue("bytes_per_timestamp", 4);
@@ -169,12 +169,9 @@ namespace LTX {
             posFile->AddHeaderValue("min_y", 0);
             posFile->AddHeaderValue("max_y", posWindowSize);
            
-
             posFile->AddHeaderPlaceholder("num_pos_samples");
             posSampCount = 0;
             std::memset(posSamplesBuffer, 0, sizeof(posSamplesBuffer));
-            posNumChans = getDataStream(0)->getContinuousChannels().size();
-            LOGC("Recording pos file with ", posNumChans, " actual datapoints per sample.");
 
         }
 
@@ -280,7 +277,7 @@ namespace LTX {
                 case 0:
                     posSampCount++;
                     posSamplesBuffer[i].timestamp = swapEndianness(
-                        static_cast<int32_t>((dataBuffer[i] - firstTimestamp) * posSampRate)); // TODO: use a timebase that's higher than posSampRate for more precision
+                        static_cast<int32_t>((dataBuffer[i] - firstTimestamp) * timestampTimebase));
                     break;
                 case 1:                   
                     posSamplesBuffer[i].x1 = swapEndianness(static_cast<uint16_t>(dataBuffer[i]));
@@ -364,7 +361,7 @@ namespace LTX {
         int8_t spikeBuffer[totalBytes] = {}; // initialise with zeros
 
         int32_t timestamp = swapEndianness(static_cast<int32_t>(
-            (spike->getTimestampInSeconds() - firstTimestamp) * tetTimestampTimebase));
+            (spike->getTimestampInSeconds() - firstTimestamp) * timestampTimebase));
 
         const float* voltageData = spike->getDataPointer();
         
