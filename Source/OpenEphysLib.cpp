@@ -23,6 +23,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <PluginInfo.h>
 
 #include "LTXRecordEnginePlugin.h"
+#include "LTXGainProcessorPlugin.h"
+#include "LTXGainProcessorPlugin.h"
 
 #include <string>
 
@@ -35,7 +37,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using namespace Plugin;
 
-#define NUM_PLUGINS 1 // Number of Record Engines included
+#define NUM_PLUGINS 2
 
 extern "C" EXPORT void getLibInfo(Plugin::LibraryInfo* info)
 {
@@ -58,6 +60,14 @@ extern "C" EXPORT int getPluginInfo(int index, Plugin::PluginInfo* info)
 		info->recordEngine.name = "LTX Format";
 		info->recordEngine.creator = &(Plugin::createRecordEngine<LTX::RecordEnginePlugin>);
 		break;
+
+	case 1:
+		info->type = Plugin::Type::PROCESSOR;
+		info->processor.name = "Spike Gain (for LTX)";
+		info->processor.type = Processor::Type::FILTER;
+		info->processor.creator = &(Plugin::createProcessor<LTX::GainProcessorPlugin>);
+		break;
+
 
 	default:
 		return -1;
