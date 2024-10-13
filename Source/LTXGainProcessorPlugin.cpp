@@ -80,7 +80,7 @@ namespace LTX {
         }
     }
 
-    std::vector<FloatParameter*> GainProcessorPlugin::getChanParamsForStreamId(uint16 streamId)
+    std::vector<FloatParameter*> GainProcessorPlugin::GetChanParamsForStreamId(uint16 streamId)
     {
         std::vector<FloatParameter*> params;
         auto stream = getDataStream(streamId);
@@ -97,6 +97,18 @@ namespace LTX {
             params.push_back(param);
         }
         return params;
+    }
+
+    std::vector<String> GainProcessorPlugin::GetChanInfosForStreamId(uint16 streamId)
+    {
+        std::vector<String> infos;
+        auto stream = getDataStream(streamId);
+
+        for (auto chan : stream->getContinuousChannels())
+        {
+            infos.push_back(chan->getName());
+        }
+        return infos;
     }
 
 

@@ -34,7 +34,7 @@ namespace LTX {
 		
     public:
 
-        GainPopupComponent(std::vector<FloatParameter*> gain_params);
+        GainPopupComponent(std::vector<FloatParameter*> gain_params, std::vector<String> channel_infos);
         ~GainPopupComponent();
 
         void sliderValueChanged(Slider* slider);
@@ -42,6 +42,7 @@ namespace LTX {
 
     private:
         OwnedArray<Slider> sliders;
+		OwnedArray<Label> chan_labels;
 		std::vector<FloatParameter*> gain_params;
 	};
 

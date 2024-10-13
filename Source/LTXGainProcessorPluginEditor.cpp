@@ -25,35 +25,84 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace LTX {
 
-    GainPopupComponent::GainPopupComponent(std::vector<FloatParameter*> gain_params_):
+    class NarrowSlider : public Slider  {
+    public:
+        using Slider::Slider;
+        String getTextFromValue(double value) override {
+            char buffer[10];
+            std::snprintf(buffer, sizeof(buffer), "%.*f", 2, value);
+            return std::string(buffer);
+        }
+    };
+
+    GainPopupComponent::GainPopupComponent(std::vector<FloatParameter*> gain_params_,
+        std::vector<String> channel_infos):
         gain_params(gain_params_)
     {
 
-        const int sliderWidth = 18;
+        const int sliderWidth = 24;
         const int sliderHeight = 60;
-        const int nCols = 8;
-        const int nRows = 4;
+        const int labelHeight = 20;
         const int padding = 10;
+        int nCols;
+        int nRows;
 
+        if (gain_params.size() <= 8) {
+            nCols = 8;
+            nRows = 1;
+        } else if (gain_params.size() <= 16) {
+            nCols = 8;
+            nRows = 2;
+        } else if (gain_params.size() <= 32) {
+            nCols = 16;
+            nRows = 2;
+        } else if (gain_params.size() <= 64) {
+            nCols = 16;
+            nRows = 4;
+        } else {
+            nCols = 8;
+            nRows = 8;
+        }
+        
         setSize((sliderWidth + padding) * nCols + padding * 2,
-               (sliderHeight + padding)* nRows + padding * 2);
+               (sliderHeight + labelHeight + padding)* nRows + padding * 2);
         sliders.clear();
 
         for (int i = 0; i < gain_params.size(); i++)
         {
-            Slider* slider = new Slider("GAIN_SLIDER" + String(i + 1));
+            const int x = padding + (sliderWidth + padding) * (i % nCols);
+            const int y = padding + (sliderHeight + labelHeight + padding) * (i / nCols);
+
+            // given we're tight for space we just show a number above the slider, and then
+            // show the full channel name as a tooltip (configured on the slider below)
+            Label* chan_label = new Label("CHAN_" + String(i+1), String(i+1));
+            chan_label->setBounds(x, y, sliderWidth, labelHeight);
+            chan_label->setFont(Font(10));
+            chan_label->setColour(Label::textColourId, Colours::beige);
+            chan_label->setJustificationType(Justification::centred);
+            addAndMakeVisible(chan_label);
+            chan_labels.add(chan_label);
+
+            Slider* slider = new NarrowSlider("GAIN_SLIDER" + String(i + 1));
+            slider->setTooltip(channel_infos[i]);
             slider->setSliderStyle(Slider::LinearBarVertical);
-            slider->setTextBoxStyle(Slider::NoTextBox, false, sliderWidth, 10);
+            slider->setTextBoxStyle(Slider::TextBoxAbove, false, sliderWidth, 20);
+            slider->setMinValue(gain_params[i]->getMinValue());
+            slider->setMaxValue(gain_params[i]->getMaxValue());
             slider->setColour(Slider::textBoxTextColourId, Colours::white);
             slider->setColour(Slider::backgroundColourId, Colours::darkgrey);
             slider->setColour(Slider::trackColourId, Colours::blue);
             slider->setValue(gain_params[i]->getFloatValue(), dontSendNotification);
             slider->addListener(this);
             slider->setSize(sliderWidth, sliderHeight);
-            slider->setTransform(AffineTransform::translation(padding + (sliderWidth+padding)*(i % nCols), (sliderHeight+padding)*(i/nCols)));
-
+            slider->setTransform(AffineTransform::translation(x,y+labelHeight));
             sliders.add(slider);
             addAndMakeVisible(slider);
+            for (Component* c : slider->getChildren()) {
+                if (Label* label = dynamic_cast<Label*>(c)) {
+                    label->setFont(Font(8));
+                }
+            }
         }
     }
 
@@ -92,10 +141,10 @@ namespace LTX {
         }
 
         GainProcessorPlugin* processor = (GainProcessorPlugin*)getProcessor();
-
-        std::vector<FloatParameter*> params = processor->getChanParamsForStreamId(getCurrentStream());
         
-        currentPopupWindow = new GainPopupComponent(params);
+        currentPopupWindow = new GainPopupComponent(
+            processor->GetChanParamsForStreamId(getCurrentStream()),
+            processor->GetChanInfosForStreamId(getCurrentStream()));
 
         CallOutBox& myBox
             = CallOutBox::launchAsynchronously(std::unique_ptr<Component>(currentPopupWindow),
