@@ -63,7 +63,7 @@ extern "C" EXPORT int getPluginInfo(int index, Plugin::PluginInfo* info)
 
 	case 1:
 		info->type = Plugin::Type::PROCESSOR;
-		info->processor.name = "Spike Gain (for LTX)";
+		info->processor.name = "Gain";
 		info->processor.type = Processor::Type::FILTER;
 		info->processor.creator = &(Plugin::createProcessor<LTX::GainProcessorPlugin>);
 		break;

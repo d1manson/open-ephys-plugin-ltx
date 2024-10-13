@@ -28,6 +28,7 @@ namespace LTX {
     {
 
         desiredWidth = 150;
+        addTextBoxParameterEditor("Gain", 10, 75);
 
     }
 }

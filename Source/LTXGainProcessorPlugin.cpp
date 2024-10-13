@@ -27,9 +27,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 namespace LTX {
 
     GainProcessorPlugin::GainProcessorPlugin()
-        : GenericProcessor("Plugin Name")
+        : GenericProcessor("Gain")
     {
-
+        // TODO: switch to per-channel gain
+        sourceNode->addFloatParameter(Parameter::GLOBAL_SCOPE, "Global Gain", "In development", 0.25, 20, 1, true);
     }
 
 
@@ -53,11 +54,32 @@ namespace LTX {
     }
 
 
+    void multiply(uint32 size, float* buffer, float factor) {
+        // multiplies the float buffer in place
+
+        // this could presumably use SIMD instructions
+        for (; size; size--) {
+            buffer[0] *= factor;
+            buffer++;
+        }
+    }
+
     void GainProcessorPlugin::process(AudioBuffer<float>& buffer)
     {
+        float factor = getParameter("Gain")->getValue();
 
-        checkForEvents(true);
+        for (auto stream : getDataStreams())
+        {
+            const uint16 streamId = stream->getStreamId();
+            const uint32 numSamples = getNumSamplesInBlock(streamId);
 
+            for (auto chan :  stream->getContinuousChannels())
+            {
+                float* ptr = buffer.getWritePointer(chan->getGlobalIndex());
+                multiply(numSamples, ptr, ((chan->getGlobalIndex() % 4) + 1) /* dummy vary across channels */ * factor);
+            }
+            
+        }
     }
 
 
