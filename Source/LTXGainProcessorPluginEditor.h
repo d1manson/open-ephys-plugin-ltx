@@ -26,19 +26,42 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <EditorHeaders.h>
 
 namespace LTX {
-	class GainProcessorPluginEditor : public GenericEditor
+
+	class GainPopupComponent :
+		public Component,
+		public Slider::Listener
+	{
+		
+    public:
+
+        GainPopupComponent(std::vector<FloatParameter*> gain_params);
+        ~GainPopupComponent();
+
+        void sliderValueChanged(Slider* slider);
+
+
+    private:
+        OwnedArray<Slider> sliders;
+		std::vector<FloatParameter*> gain_params;
+	};
+
+
+
+	class GainProcessorPluginEditor : 
+		public GenericEditor,
+		public Button::Listener
 	{
 	public:
-
-		/** Constructor */
 		GainProcessorPluginEditor(GenericProcessor* parentNode);
 
-		/** Destructor */
-		~GainProcessorPluginEditor() { }
+		~GainProcessorPluginEditor() { };
 
+		void buttonClicked(Button*) override;
 	private:
+		std::unique_ptr<UtilityButton> configureButton;
 
-		/** Generates an assertion if this class leaks */
+		GainPopupComponent* currentPopupWindow;
+
 		JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(GainProcessorPluginEditor);
 	};
 }

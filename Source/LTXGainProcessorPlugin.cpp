@@ -29,8 +29,7 @@ namespace LTX {
     GainProcessorPlugin::GainProcessorPlugin()
         : GenericProcessor("Gain")
     {
-        // TODO: switch to per-channel gain
-        sourceNode->addFloatParameter(Parameter::GLOBAL_SCOPE, "Global Gain", "In development", 0.25, 20, 1, true);
+
     }
 
 
@@ -66,20 +65,38 @@ namespace LTX {
 
     void GainProcessorPlugin::process(AudioBuffer<float>& buffer)
     {
-        float factor = getParameter("Gain")->getValue();
-
         for (auto stream : getDataStreams())
         {
             const uint16 streamId = stream->getStreamId();
             const uint32 numSamples = getNumSamplesInBlock(streamId);
-
-            for (auto chan :  stream->getContinuousChannels())
+            for (auto chan : stream->getContinuousChannels())
             {
-                float* ptr = buffer.getWritePointer(chan->getGlobalIndex());
-                multiply(numSamples, ptr, ((chan->getGlobalIndex() % 4) + 1) /* dummy vary across channels */ * factor);
+                if (chan->hasParameter("Gain")) {
+                    float* ptr = buffer.getWritePointer(chan->getGlobalIndex());
+                    multiply(numSamples, ptr, chan->getParameter("Gain")->getValue());
+                }
             }
             
         }
+    }
+
+    std::vector<FloatParameter*> GainProcessorPlugin::getChanParamsForStreamId(uint16 streamId)
+    {
+        std::vector<FloatParameter*> params;
+        auto stream = getDataStream(streamId);
+
+        for (auto chan : stream->getContinuousChannels() )
+        {
+            FloatParameter* param;
+            if(chan->hasParameter("Gain")){
+                param = (FloatParameter*)chan->getParameter("Gain");
+            }  else {
+                param = new FloatParameter(this, Parameter::CONTINUOUS_CHANNEL_SCOPE, "Gain", "Multiply the voltage by x", 1.0, 0.25, 20.0, 0.25);
+                chan->addParameter(param);
+            }
+            params.push_back(param);
+        }
+        return params;
     }
 
 

@@ -52,6 +52,8 @@ namespace LTX {
 			Visualizer plugins typically use this method to send data to the canvas for display purposes */
 		void process(AudioBuffer<float>& buffer) override;
 
+		std::vector<FloatParameter*> GainProcessorPlugin::getChanParamsForStreamId(uint16 streamId);
+
 		/** Handles events received by the processor
 			Called automatically for each received event whenever checkForEvents() is called from
 			the plugin's process() method */
