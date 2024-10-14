@@ -77,6 +77,8 @@ namespace LTX {
 			Parameter objects*/
 		void loadCustomParametersFromXml(XmlElement* parentElement) override;
 
+	private:
+		void ensureParamsExist();
 	};
 
 }

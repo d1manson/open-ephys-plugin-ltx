@@ -81,8 +81,11 @@ namespace LTX {
             slider->setTooltip(channel_infos[i]);
             slider->setSliderStyle(Slider::LinearBarVertical);
             slider->setTextBoxStyle(Slider::TextBoxAbove, false, sliderWidth, 20);
-            slider->setMinValue(gain_params[i]->getMinValue());
-            slider->setMaxValue(gain_params[i]->getMaxValue());
+            slider->setRange(
+                gain_params[i]->getMinValue(),
+                gain_params[i]->getMaxValue(),
+                gain_params[i]->getStepSize()
+            );
             slider->setColour(Slider::textBoxTextColourId, Colours::white);
             slider->setColour(Slider::backgroundColourId, Colours::darkgrey);
             slider->setColour(Slider::trackColourId, Colours::blue);
