@@ -91,7 +91,7 @@ namespace LTX {
             if(chan->hasParameter("Gain")){
                 param = (FloatParameter*)chan->getParameter("Gain");
             }  else {
-                param = new FloatParameter(this, Parameter::CONTINUOUS_CHANNEL_SCOPE, "Gain", "Multiply the voltage by x", 1.0, 0.25, 20.0, 0.25);
+                param = new FloatParameter(this, Parameter::CONTINUOUS_CHANNEL_SCOPE, "Gain", "Multiply the voltage by x", 1.0, -2.0, 2.0, 0.05);
                 chan->addParameter(param);
             }
             params.push_back(param);
