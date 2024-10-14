@@ -66,24 +66,25 @@ namespace LTX {
     {
         for (auto stream : getDataStreams()) {
             const uint32 numSamples = getNumSamplesInBlock(stream->getStreamId());
+            const auto& gain_params_for_stream = gain_params[std::max(stream->getGlobalIndex(),0)];
             for (auto chan : stream->getContinuousChannels())
             {
                 int chanIndex = chan->getGlobalIndex();
-                multiply(numSamples, 
+                multiply(numSamples,
                     buffer.getWritePointer(chanIndex),
-                    chan->getParameter("Gain")->getValue());
-            }       
+                    gain_params_for_stream[chanIndex]->getValue());
+            }
         }
     }
 
     std::vector<FloatParameter*> GainProcessorPlugin::GetChanParamsForStreamId(uint16 streamId)
     {
         ensureParamsExist();
+        const auto& gain_params_for_stream = gain_params[std::max(getDataStream(streamId)->getGlobalIndex(), 0)];
 
         std::vector<FloatParameter*> params;
-        auto stream = getDataStream(streamId);
-        for (auto chan : stream->getContinuousChannels() ) {
-            params.push_back((FloatParameter*)chan->getParameter("Gain"));
+        for (const auto& unique_ptr : gain_params_for_stream) {
+            params.push_back(unique_ptr.get());
         }
         return params;
     }
@@ -119,11 +120,19 @@ namespace LTX {
     }
 
     void GainProcessorPlugin::ensureParamsExist() {
+
+        gain_params.resize(getNumDataStreams());
         for (auto stream : getDataStreams()) {
-            for (auto chan : stream->getContinuousChannels())
-            {
-                if (!chan->hasParameter("Gain")) {
-                    chan->addParameter(new FloatParameter(this, Parameter::CONTINUOUS_CHANNEL_SCOPE, "Gain", "Multiply the voltage by x", 1.0, -2.0, 2.0, 0.05));
+            auto& gain_params_stream = gain_params[std::max(stream->getGlobalIndex(), 0)];
+            gain_params_stream.resize(stream->getChannelCount());
+            for (auto chan : stream->getContinuousChannels()) {
+                const int chanIdx = chan->getGlobalIndex();
+                if (gain_params_stream[chanIdx] == nullptr) {
+                    gain_params_stream[chanIdx] = std::make_unique<FloatParameter>(
+                        this,
+                        Parameter::CONTINUOUS_CHANNEL_SCOPE,
+                        "Gain",
+                        "Multiply the voltage by x", 1.0, -2.0, 2.0, 0.05);
                 }
             }
         }
@@ -131,19 +140,18 @@ namespace LTX {
 
     void GainProcessorPlugin::saveCustomParametersToXml(XmlElement* xml)
     {
-        // seems that only GLOBAL_SCOPE parameters are auomtically saved, so we do this custom logic
         ensureParamsExist();
-
+        
         for (auto stream : getDataStreams()){
             XmlElement* streamXml = xml->createNewChildElement("STREAM");
             streamXml->setAttribute("name", stream->getName());
+            auto& gain_params_stream = gain_params[std::max(stream->getGlobalIndex(), 0)];
             for (auto chan : stream->getContinuousChannels())
             {
                 XmlElement* chanXml = streamXml->createNewChildElement("CHANNEL");
                 chanXml->setAttribute("global_index", chan->getGlobalIndex());
-                chan->getParameter("Gain")->toXml(chanXml);
-            }
-
+                gain_params_stream[chan->getGlobalIndex()]->toXml(chanXml);
+           }
         }
     }
 
@@ -156,14 +164,13 @@ namespace LTX {
             if (!streamXml) {
                 continue;
             }
+            auto& gain_params_stream = gain_params[std::max(stream->getGlobalIndex(), 0)];
             for (auto chan : stream->getContinuousChannels()){
                 XmlElement* chanXml = streamXml->getChildByAttribute("global_index", String(chan->getGlobalIndex()));
                 if (!chanXml) {
                     continue;
                 }
-
-                //chan->getParameter("Gain")->setNextValue(chanXml->getDoubleAttribute("Gain", 1.0));
-                chan->getParameter("Gain")->fromXml(chanXml);
+                gain_params_stream[chan->getGlobalIndex()]->fromXml(chanXml);
             }
         }
     }

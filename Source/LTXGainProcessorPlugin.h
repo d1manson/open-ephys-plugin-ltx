@@ -79,6 +79,9 @@ namespace LTX {
 
 	private:
 		void ensureParamsExist();
+
+		// maps std::max(stream.globalIdx(), 0) => chan.globalIdx() => FloatParameter
+		std::vector<std::vector<std::unique_ptr<FloatParameter>>> gain_params;
 	};
 
 }
