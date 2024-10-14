@@ -53,16 +53,10 @@ namespace LTX {
         } else if (gain_params.size() <= 16) {
             nCols = 8;
             nRows = 2;
-        } else if (gain_params.size() <= 32) {
-            nCols = 16;
-            nRows = 2;
-        } else if (gain_params.size() <= 64) {
-            nCols = 16;
-            nRows = 4;
         } else {
-            nCols = 8;
-            nRows = 8;
-        }
+            nCols = 16;
+            nRows = (gain_params.size() + (nCols - 1)) / nCols; // ceiling division
+        } 
         
         setSize((sliderWidth + padding) * nCols + padding * 2,
                (sliderHeight + labelHeight + padding)* nRows + padding * 2);
