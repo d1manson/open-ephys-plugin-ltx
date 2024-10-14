@@ -44,6 +44,15 @@ namespace LTX {
         OwnedArray<Slider> sliders;
 		OwnedArray<Label> chan_labels;
 		std::vector<FloatParameter*> gain_params;
+		ComponentDragger dragger;
+
+		void mouseDown(const MouseEvent& e){
+			dragger.startDraggingComponent(this->getParentComponent(), e);
+		}
+
+		void mouseDrag(const MouseEvent& e){
+			dragger.dragComponent(this->getParentComponent(), e, nullptr);
+		}
 	};
 
 
