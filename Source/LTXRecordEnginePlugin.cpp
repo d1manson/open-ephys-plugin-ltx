@@ -30,15 +30,16 @@ namespace LTX {
     constexpr int eegDownsampleBy = eegInputSampRate / eegOutputSampRate;
     constexpr int posWindowSize = 1000; // todo: allow user to configure this
     constexpr int posPixelsPerPos = 600; // todo: allow user to configure this
+    constexpr int requiredPosChans = 7; // see assertion below for more details
 
-    int32_t swapEndianness(int32_t value) {
+    inline int32_t swapEndianness(int32_t value) {
         return ((value & 0xFF000000) >> 24) |
             ((value & 0x00FF0000) >> 8) |
             ((value & 0x0000FF00) << 8) |
             ((value & 0x000000FF) << 24);
     }
     
-    uint16_t swapEndianness(uint16_t value) {
+    inline uint16_t swapEndianness(uint16_t value) {
         return ((value & 0xFF00) >> 8) |
             ((value & 0x00FF) << 8);
     }
@@ -131,8 +132,8 @@ namespace LTX {
             }
         }
         else if (mode == RecordMode::POS_ONLY) {
-            if (getDataStream(0)->getContinuousChannels().size() != 7) {
-                LOGE("For LTX pos, require exactly 7 float channels from Bonsai. The first is a timestamp, and then x1,y1,x2,y2,numpix1,numpix2. ",
+            if (getDataStream(0)->getContinuousChannels().size() != requiredPosChans) {
+                LOGE("For LTX pos, require exactly ", requiredPosChans, " float channels from Bonsai. The first is a timestamp, and then x1,y1,x2,y2,numpix1,numpix2. ",
                     "However, received ", getDataStream(0)->getContinuousChannels().size(), " channels.");
                 CoreServices::setAcquisitionStatus(false);
                 return;
@@ -250,8 +251,7 @@ namespace LTX {
 
             eegFiles[writeChannel]->WriteBinaryData(eegBuffer, nSampsWritten);
             eegFullSampCount[writeChannel] += size;
-        }
-        else if (mode == RecordMode::POS_ONLY) {
+        } else if (mode == RecordMode::POS_ONLY) {
 
             if (size > maxPosSamplesPerChunk) {
                 LOGE("LTX mode:POS_ONLY currently only supports ", maxPosSamplesPerChunk, " samples per chunk, but encountered ", size, ". Recording stopped.");
@@ -300,7 +300,7 @@ namespace LTX {
                 }
             }
 
-            if (writeChannel == posNumChans-1) {
+            if (writeChannel == requiredPosChans-1) {
                 // Note we are assuming that channels came in order so that when we get the last one
                 // we've seen them all, and that they all had the same size. Hopefully a safe assumption,
                 // but i haven't actually checked the existing implementation in the core codebase.

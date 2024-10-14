@@ -108,7 +108,6 @@ namespace LTX {
         uint64 posSampCount = 0;
 
         // We assume that the channels come in order so that we know when we've got all the data for a given batch of samples.
-        size_t posNumChans = 0; // we lookup this value from the stream at the start of recording for use during writing the data.
         size_t posSampRate = 0; // ..and same for this
         struct PosSample {
             int32_t timestamp;
