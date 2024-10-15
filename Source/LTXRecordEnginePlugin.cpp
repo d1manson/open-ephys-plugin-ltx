@@ -73,12 +73,14 @@ namespace LTX {
         if (mode == RecordMode::SPIKES_AND_SET) {
             setFile = std::make_unique<LTXFile>(basePath, ".set", start_tm);
 
+            setFile->AddHeaderValue("lasttrialdatetime", std::chrono::duration_cast<std::chrono::seconds>(start_tm.time_since_epoch()).count());
+
             // need some numbers here. todo: allow configuration
             setFile->AddHeaderValue("lightBearing_1", 0);
             setFile->AddHeaderValue("lightBearing_2", 180);
             setFile->AddHeaderValue("lightBearing_3", 0);
             setFile->AddHeaderValue("lightBearing_4", 0);
-
+            
 
             tetFiles.clear();
             tetSpikeCount.clear();
