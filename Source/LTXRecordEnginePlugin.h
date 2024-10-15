@@ -94,7 +94,6 @@ namespace LTX {
         const double TIMESTAMP_UNINITIALIZED = -1;
 
         RecordMode mode = RecordMode::NONE;
-        double firstTimestamp = TIMESTAMP_UNINITIALIZED;
 
         std::unique_ptr<LTXFile> setFile;
 
@@ -106,9 +105,10 @@ namespace LTX {
 
         std::unique_ptr<LTXFile> posFile;
         uint64 posSampCount = 0;
+        size_t posSampRate = 0;
+        double posFirstTimestamp = TIMESTAMP_UNINITIALIZED;
 
         // We assume that the channels come in order so that we know when we've got all the data for a given batch of samples.
-        size_t posSampRate = 0; // ..and same for this
         struct PosSample {
             int32_t timestamp;
             uint16_t x1;

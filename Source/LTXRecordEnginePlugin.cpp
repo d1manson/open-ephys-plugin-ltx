@@ -151,9 +151,9 @@ namespace LTX {
             posSampCount = 0;
             std::memset(posSamplesBuffer, 0, sizeof(posSamplesBuffer));
 
+            posFirstTimestamp = TIMESTAMP_UNINITIALIZED; // gets initialised using the first continuous data below
         }
 
-        firstTimestamp = TIMESTAMP_UNINITIALIZED; // gets initialised using the first continuous data below
 
     }
 
@@ -189,15 +189,7 @@ namespace LTX {
                                                    int size)
     {
 
-        if (mode == RecordMode::SPIKES_AND_SET ) {
-            // see the separate writeSpike() function below for where spikes are actually recorded.
-            // here we just need to grab the first timestamp on the continuous stream so we can acurately
-            // timestamp the spikes as they are written.
-            if (firstTimestamp == TIMESTAMP_UNINITIALIZED) {
-                firstTimestamp = ftsBuffer[0];
-                LOGC("SPIKES: firstTimestamp initialised to ", firstTimestamp);
-            } 
-        } else if (mode == RecordMode::EEG_ONLY) {
+        if (mode == RecordMode::EEG_ONLY) {
             // no timestamps written in the EEG file at all
 
             constexpr int outputBufferSize = 1024;
@@ -237,10 +229,10 @@ namespace LTX {
             }
 
 
-            if (firstTimestamp == TIMESTAMP_UNINITIALIZED && writeChannel == 0) { 
-               firstTimestamp = dataBuffer[0];
-               if (firstTimestamp > 4*60*60 /* 4 hours in seconds = 14400 */) {
-                   LOGE("POS recording started with 32bit floating point timestamp: ", firstTimestamp, " seconds. That's quite large; you won't get many decimal places of precision. "
+            if (posFirstTimestamp == TIMESTAMP_UNINITIALIZED && writeChannel == 0) { 
+               posFirstTimestamp = dataBuffer[0];
+               if (posFirstTimestamp > 4*60*60 /* 4 hours in seconds = 14400 */) {
+                   LOGE("POS recording started with 32bit floating point timestamp: ", posFirstTimestamp, " seconds. That's quite large; you won't get many decimal places of precision. "
                        "Stopping acquistion now. When you restart acquisition, the timestamp will begin at 0seconds, which will work much better.");
                    // note this is talking about the timestamp we recieve from the Bonsai source; the timestamps we record below will always start from zero, but they will inherit
                    // the precision provided by the Bonsai source, hence the check here. Note we are checking at the start of the recording, so we use an even more conservative threshold.
@@ -254,7 +246,7 @@ namespace LTX {
                 case 0:
                     posSampCount++;
                     posSamplesBuffer[i].timestamp = BSWAP32(
-                        static_cast<int32_t>((dataBuffer[i] - firstTimestamp) * timestampTimebase));
+                        static_cast<int32_t>((dataBuffer[i] - posFirstTimestamp) * timestampTimebase));
                     break;
                 case 1:                   
                     posSamplesBuffer[i].x1 = BSWAP16(static_cast<uint16_t>(dataBuffer[i]));
@@ -330,26 +322,20 @@ namespace LTX {
             LOGE("Expected exactly 40 samples per spike, which will be padded out to 50, but found ", channel->getTotalSamples());
             return;
         }
-        if (firstTimestamp == TIMESTAMP_UNINITIALIZED) {
-            LOGE("writeSpike() called before writeContinuousData() has had a chance to initialise the firstTimestamp value. Hopefully this is a rare occurance and you can just start recording again.");
-            CoreServices::setAcquisitionStatus(false);
-            return;
-        }
 
         int8 spikeBuffer[totalBytes] = {}; // initialise with zeros
 
-        int32_t timestamp = BSWAP32(static_cast<int32_t>(
-            (spike->getTimestampInSeconds() - firstTimestamp) * timestampTimebase));
+        // seems that getTimestampInSeconds() is from the start of recording not start of acquisition
+        int32_t timestamp = BSWAP32(static_cast<int32_t>(spike->getTimestampInSeconds() * timestampTimebase));
 
         const float* voltageData = spike->getDataPointer();
         for (int i = 0; i < numChans; i++)
         {
-            std::memcpy(spikeBuffer + bytesPerChan * i, &timestamp, sizeof(int32));
+            std::memcpy(&spikeBuffer[i * bytesPerChan], &timestamp, 4);
             float32sToInt8s<oeSampsPerSpike, -250, 250>(
                 &voltageData[i * oeSampsPerSpike],
                 &spikeBuffer[i * bytesPerChan + 4 /* timestamp bytes */]);
         }
-
         tetFiles[spike->getChannelIndex()]->WriteBinaryData(spikeBuffer, totalBytes);
         tetSpikeCount[spike->getChannelIndex()]++;
     }
@@ -361,9 +347,6 @@ namespace LTX {
         float sourceSampleRate,
         String text)
     {
-        // This didn't seem to be especially useful as it gives the sampleNumber not the timestamp;
-        // we use the first call to writeContinuousData() to set the firstTimestamp value instead.
-        // LOGC("MODE:", mode, ":  writeTimestampSyncText(streamId = ", streamId, ", timestamp = ", timestamp, ", sourceSampleRate = ", sourceSampleRate, ", ", text, ")");
     }
 
 
