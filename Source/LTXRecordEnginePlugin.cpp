@@ -22,6 +22,7 @@
 */
 
 #include "LTXRecordEnginePlugin.h"
+#include "util.h"
 
 namespace LTX {
     constexpr int timestampTimebase = 96000;
@@ -31,46 +32,22 @@ namespace LTX {
     constexpr int posWindowSize = 1000; // todo: allow user to configure this
     constexpr int posPixelsPerPos = 600; // todo: allow user to configure this
     constexpr int requiredPosChans = 7; // see assertion below for more details
+ 
+    RecordEnginePlugin::RecordEnginePlugin(){}
 
-    inline int32_t swapEndianness(int32_t value) {
-        return ((value & 0xFF000000) >> 24) |
-            ((value & 0x00FF0000) >> 8) |
-            ((value & 0x0000FF00) << 8) |
-            ((value & 0x000000FF) << 24);
-    }
-    
-    inline uint16_t swapEndianness(uint16_t value) {
-        return ((value & 0xFF00) >> 8) |
-            ((value & 0x00FF) << 8);
-    }
-
-    RecordEnginePlugin::RecordEnginePlugin()
-    {
-       
-    }
-
-    RecordEnginePlugin::~RecordEnginePlugin()
-    {
-
-    }
-
+    RecordEnginePlugin::~RecordEnginePlugin() {}
 
     RecordEngineManager* RecordEnginePlugin::getEngineManager()
     {
         RecordEngineManager* man = new RecordEngineManager("LTX", "LTX Format",
             &(engineFactory<RecordEnginePlugin>));
 
-        // Not sure how paramaters are supposed to work?
-        //EngineParameter* param;
-        //param = new EngineParameter(EngineParameter::INT, 0, "[pos] Pixels Per Meter", 400);
-        //man->addParameter(param);
         return man;
     }
 
 
     void RecordEnginePlugin::openFiles(File rootFolder, int experimentNumber, int recordingNumber)
     {
-
         if (getNumRecordedSpikeChannels() > 0) {
             mode = RecordMode::SPIKES_AND_SET;
             LOGC("LTX RecordEngine using mode:SPIKES_AND_SET (", mode, ").");
@@ -276,26 +253,26 @@ namespace LTX {
                 switch (writeChannel) {
                 case 0:
                     posSampCount++;
-                    posSamplesBuffer[i].timestamp = swapEndianness(
+                    posSamplesBuffer[i].timestamp = BSWAP32(
                         static_cast<int32_t>((dataBuffer[i] - firstTimestamp) * timestampTimebase));
                     break;
                 case 1:                   
-                    posSamplesBuffer[i].x1 = swapEndianness(static_cast<uint16_t>(dataBuffer[i]));
+                    posSamplesBuffer[i].x1 = BSWAP16(static_cast<uint16_t>(dataBuffer[i]));
                     break;
                 case 2:
-                    posSamplesBuffer[i].y1 = swapEndianness(static_cast<uint16_t>(dataBuffer[i]));
+                    posSamplesBuffer[i].y1 = BSWAP16(static_cast<uint16_t>(dataBuffer[i]));
                     break;
                 case 3:
-                    posSamplesBuffer[i].x2 = swapEndianness(static_cast<uint16_t>(dataBuffer[i]));
+                    posSamplesBuffer[i].x2 = BSWAP16(static_cast<uint16_t>(dataBuffer[i]));
                     break;
                 case 4:
-                    posSamplesBuffer[i].y2 = swapEndianness(static_cast<uint16_t>(dataBuffer[i]));
+                    posSamplesBuffer[i].y2 = BSWAP16(static_cast<uint16_t>(dataBuffer[i]));
                     break;
                 case 5:
-                    posSamplesBuffer[i].numpix1 = swapEndianness(static_cast<uint16_t>(dataBuffer[i]));
+                    posSamplesBuffer[i].numpix1 = BSWAP16(static_cast<uint16_t>(dataBuffer[i]));
                     break;
                 case 6:
-                    posSamplesBuffer[i].numpix2 = swapEndianness(static_cast<uint16_t>(dataBuffer[i]));
+                    posSamplesBuffer[i].numpix2 = BSWAP16(static_cast<uint16_t>(dataBuffer[i]));
                     break;
                 }
             }
@@ -318,17 +295,18 @@ namespace LTX {
     }
 
 
-    template <size_t N>
-    inline void float32sToInt8s(const float* src, int8_t* dest, float factor) {
+    template <size_t N, int Min, int Max>
+    inline void float32sToInt8s(const float* src, int8* dest) {
+        static_assert(N == 40, "expected 40 samples per spike");
+        static_assert(Min == -250 && Max == 250, "expected input range [-250,250]");
+
         // TODO: for N=40, use SIMD 512bit intrinsics three times, rather than a loop
         //       may need to copy into a properly aligned float[48] buffer, with zero padding at the end
         //       should be able to make that static as the zeros will never be overwritten
         //       can then use 16,16,16 float operations. Think there might even be a builtin way to "saturate" the cast
         for (int i = 0; i < N; i++) {
-            float v = src[i] * factor;
-            if (v > 127) v = 127;
-            if (v < -128) v = -128;
-            dest[i] = static_cast<int8_t>(v);
+            int32 v = static_cast<int32>(src[i]) / 2; // see static_assert above regarding expected input range [-250,250]
+            dest[i] = std::min(std::max(v, -128), 25);
         }
     }
 
@@ -358,26 +336,18 @@ namespace LTX {
             return;
         }
 
-        int8_t spikeBuffer[totalBytes] = {}; // initialise with zeros
+        int8 spikeBuffer[totalBytes] = {}; // initialise with zeros
 
-        int32_t timestamp = swapEndianness(static_cast<int32_t>(
+        int32_t timestamp = BSWAP32(static_cast<int32_t>(
             (spike->getTimestampInSeconds() - firstTimestamp) * timestampTimebase));
 
         const float* voltageData = spike->getDataPointer();
-        
-        const float bitVolts = channel->getChannelBitVolts(0);
-
         for (int i = 0; i < numChans; i++)
         {
-            std::memcpy(spikeBuffer + bytesPerChan * i, &timestamp, sizeof(uint32_t));
-
-            const float bitVolts = channel->getChannelBitVolts(i);
-
-            float32sToInt8s<oeSampsPerSpike>(
+            std::memcpy(spikeBuffer + bytesPerChan * i, &timestamp, sizeof(int32));
+            float32sToInt8s<oeSampsPerSpike, -250, 250>(
                 &voltageData[i * oeSampsPerSpike],
-                &spikeBuffer[i * bytesPerChan + 4 /* timestamp bytes */],
-                1. / (channel->getChannelBitVolts(i) * 4.) //  Not sure why exactly, but dividing by bitVolts * 4 seems to be about right.
-            );
+                &spikeBuffer[i * bytesPerChan + 4 /* timestamp bytes */]);
         }
 
         tetFiles[spike->getChannelIndex()]->WriteBinaryData(spikeBuffer, totalBytes);
