@@ -151,8 +151,6 @@ namespace LTX {
            
             posFile->AddHeaderPlaceholder("num_pos_samples");
             posSampCount = 0;
-            std::memset(posSamplesBuffer, 0, sizeof(posSamplesBuffer));
-
             posFirstTimestamp = TIMESTAMP_UNINITIALIZED; // gets initialised using the first continuous data below
         }
 
@@ -224,13 +222,6 @@ namespace LTX {
             eegFullSampCount[writeChannel] += size;
         } else if (mode == RecordMode::POS_ONLY) {
 
-            if (size > maxPosSamplesPerChunk) {
-                LOGE("LTX mode:POS_ONLY currently only supports ", maxPosSamplesPerChunk, " samples per chunk, but encountered ", size, ". Recording stopped.");
-                CoreServices::setAcquisitionStatus(false); 
-                return; 
-            }
-
-
             if (posFirstTimestamp == TIMESTAMP_UNINITIALIZED && writeChannel == 0) { 
                posFirstTimestamp = dataBuffer[0];
                if (posFirstTimestamp > 4*60*60 /* 4 hours in seconds = 14400 */) {
@@ -243,39 +234,26 @@ namespace LTX {
                }
             }
 
-            for (int i = 0; i < maxPosSamplesPerChunk && i<size; i++) {
-                switch (writeChannel) {
-                case 0:
-                    posSampCount++;
+            // Note we are assuming that channels came in order so that when we get the 0th one first
+            // and when we get the last one we can assume we've seen the all and they all had the same size.
+            // Hopefully a safe assumption, but i haven't actually checked the existing implementation in the core codebase.
+
+            if (writeChannel == 0) {
+                posSamplesBuffer.resize(size);
+                std::memset(posSamplesBuffer.data(), 0, size * sizeof(posSamplesBuffer));
+                posSampCount += size;
+                for (int i = 0; i < size; i++) {
                     posSamplesBuffer[i].timestamp = BSWAP32(
                         static_cast<int32_t>((dataBuffer[i] - posFirstTimestamp) * timestampTimebase));
-                    break;
-                case 1:                   
-                    posSamplesBuffer[i].x1 = BSWAP16(static_cast<uint16_t>(dataBuffer[i]));
-                    break;
-                case 2:
-                    posSamplesBuffer[i].y1 = BSWAP16(static_cast<uint16_t>(dataBuffer[i]));
-                    break;
-                case 3:
-                    posSamplesBuffer[i].x2 = BSWAP16(static_cast<uint16_t>(dataBuffer[i]));
-                    break;
-                case 4:
-                    posSamplesBuffer[i].y2 = BSWAP16(static_cast<uint16_t>(dataBuffer[i]));
-                    break;
-                case 5:
-                    posSamplesBuffer[i].numpix1 = BSWAP16(static_cast<uint16_t>(dataBuffer[i]));
-                    break;
-                case 6:
-                    posSamplesBuffer[i].numpix2 = BSWAP16(static_cast<uint16_t>(dataBuffer[i]));
-                    break;
                 }
-            }
+            } else {
+                for (int i = 0; i < size; i++) {
+                    posSamplesBuffer[i].xy_etc[writeChannel-1] = BSWAP16(static_cast<uint16_t>(dataBuffer[i]));
+                }
 
-            if (writeChannel == requiredPosChans-1) {
-                // Note we are assuming that channels came in order so that when we get the last one
-                // we've seen them all, and that they all had the same size. Hopefully a safe assumption,
-                // but i haven't actually checked the existing implementation in the core codebase.
-                posFile->WriteBinaryData(&posSamplesBuffer, sizeof(PosSample) * size);                
+                if (writeChannel == requiredPosChans - 1) {
+                    posFile->WriteBinaryData(static_cast<void*>(posSamplesBuffer.data()), sizeof(PosSample) * size);
+                }
             }
             
         }

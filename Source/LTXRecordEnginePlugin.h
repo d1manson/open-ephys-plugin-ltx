@@ -36,9 +36,6 @@
 
 namespace LTX {
 
-    constexpr int maxPosSamplesPerChunk = 8; // used fixed size buffer to collect the data
-
-
     class RecordEnginePlugin : public RecordEngine
     {
     public:
@@ -110,17 +107,11 @@ namespace LTX {
 
         // We assume that the channels come in order so that we know when we've got all the data for a given batch of samples.
         struct PosSample {
-            int32_t timestamp;
-            uint16_t x1;
-            uint16_t y1;
-            uint16_t x2;
-            uint16_t y2;
-            uint16_t numpix1;
-            uint16_t numpix2;
-            char padding[4];
+            int32_t timestamp = 0;
+            uint16_t xy_etc[8] = {}; // we only use the first 6 elements, with the last two just padding
         };
         static_assert(sizeof(PosSample) == 4+8*2, "PosSample should be laid out in memory as 4+8*2 bytes.");
-        PosSample posSamplesBuffer[maxPosSamplesPerChunk];
+        std::vector<PosSample> posSamplesBuffer;
     };
 
 }
