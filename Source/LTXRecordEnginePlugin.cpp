@@ -121,7 +121,8 @@ namespace LTX {
             posFile = std::make_unique<LTXFile>(basePath, ".pos", start_tm);
             
             posSampRate = getContinuousChannel(0)->getSampleRate();
-            posFile->AddHeaderValue("timebase", std::to_string(timestampTimebase) + " hz");
+            posFile->AddHeaderValue("timestamp_timebase", std::to_string(timestampTimebase) + " hz");
+            posFile->AddHeaderValue("timebase", std::to_string(posSampRate) + " hz"); // required by Waveform GUI at least, maybe other code
             posFile->AddHeaderValue("sample_rate", std::to_string(posSampRate) + " hz");
             
             posFile->AddHeaderValue("bytes_per_timestamp", 4);
