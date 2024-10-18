@@ -278,7 +278,7 @@ namespace LTX {
         //       can then use 16,16,16 float operations. Think there might even be a builtin way to "saturate" the cast
         for (int i = 0; i < N; i++) {
             int32 v = static_cast<int32>(src[i]) / 2; // see static_assert above regarding expected input range [-250,250]
-            dest[i] = std::min(std::max(v, -128), 25);
+            dest[i] = std::min(std::max(v, -128), 127);
         }
     }
 
