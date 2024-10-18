@@ -15,7 +15,6 @@
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	GNU General Public License for more details.
-
 	You should have received a copy of the GNU General Public License
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
@@ -32,6 +31,10 @@ namespace LTX {
     constexpr int posWindowSize = 1000; // todo: allow user to configure this
     constexpr int posPixelsPerPos = 600; // todo: allow user to configure this
     constexpr int requiredPosChans = 7; // see assertion below for more details
+    constexpr int spikesNumChans = 4;
+    constexpr int spikesBytesPerChan = 4 /* 4 byte timestamp */ + 50 /* one-byte voltage for 50 samples */;
+    constexpr int oeSampsPerSpike = 40; // seems to be hard-coded as 8+32 = 40
+
  
     RecordEnginePlugin::RecordEnginePlugin(){}
 
@@ -69,6 +72,7 @@ namespace LTX {
 
         std::chrono::system_clock::time_point start_tm = std::chrono::system_clock::now(); // used to calculate duration (not sure if OpenEphys offers an alternative)
         
+        startingSampleNumber = TIMESTAMP_UNINITIALIZED;
 
         if (mode == RecordMode::SPIKES_AND_SET) {
             setFile = std::make_unique<LTXFile>(basePath, ".set", start_tm);
@@ -85,6 +89,19 @@ namespace LTX {
             tetFiles.clear();
             tetSpikeCount.clear();
             for (int i = 0; i < getNumRecordedSpikeChannels(); i++) {
+                // could of important checks before we get going...
+                const SpikeChannel* channel = getSpikeChannel(i);
+                if (channel->getNumChannels() != spikesNumChans) {
+                    LOGE("Expected exactly 4 channels for a spike, but found ", channel->getNumChannels());
+                    CoreServices::setAcquisitionStatus(false);
+                    return;
+                }
+                if (channel->getTotalSamples() != oeSampsPerSpike) {
+                    LOGE("Expected exactly 40 samples per spike, which will be padded out to 50, but found ", channel->getTotalSamples());
+                    CoreServices::setAcquisitionStatus(false);
+                    return;
+                }
+
                 tetFiles.push_back(std::make_unique<LTXFile>(basePath, "." + std::to_string(i + 1), start_tm));
                 LTXFile* f = tetFiles.back().get();
                 f->AddHeaderValue("num_chans", 4);
@@ -95,7 +112,6 @@ namespace LTX {
                 f->AddHeaderValue("sample_rate", std::to_string(getSpikeChannel(i)->getSampleRate()) + " hz"); 
                 f->AddHeaderValue("timebase", std::to_string(timestampTimebase) + " hz");
                 f->AddHeaderPlaceholder("num_spikes");
-
                 tetSpikeCount.push_back(0);
             }
         } else if (mode == RecordMode::EEG_ONLY){ 
@@ -285,37 +301,28 @@ namespace LTX {
 
     void RecordEnginePlugin::writeSpike(int electrodeIndex, const Spike* spike)
     {
+        constexpr int totalBytes = spikesBytesPerChan * spikesNumChans;
+
         if (mode != RecordMode::SPIKES_AND_SET) {
             return;
         }
-
-        constexpr int numChans = 4;
-        constexpr int bytesPerChan = 4 /* 4 byte timestamp */ + 50 /* one-byte voltage for 50 samples */;
-        constexpr int totalBytes = bytesPerChan * numChans;
-        constexpr int oeSampsPerSpike = 40; // seems to be hard-coded as 8+32 = 40
-
-        const SpikeChannel* channel = getSpikeChannel(electrodeIndex);
-        if (channel->getNumChannels() != numChans) {
-            LOGE("Expected exactly 4 channels for a spike, but found ", channel->getNumChannels());
+        if (spike->getSampleNumber() < startingSampleNumber) {
             return;
         }
-        if (channel->getTotalSamples() != oeSampsPerSpike) {
-            LOGE("Expected exactly 40 samples per spike, which will be padded out to 50, but found ", channel->getTotalSamples());
-            return;
-        }
+
+        const SpikeChannel* channel = getSpikeChannel(electrodeIndex);                
 
         int8 spikeBuffer[totalBytes] = {}; // initialise with zeros
 
-        // seems that getTimestampInSeconds() is from the start of recording not start of acquisition
         int32_t timestamp = BSWAP32(static_cast<int32_t>(spike->getTimestampInSeconds() * timestampTimebase));
 
         const float* voltageData = spike->getDataPointer();
-        for (int i = 0; i < numChans; i++)
+        for (int i = 0; i < spikesNumChans; i++)
         {
-            std::memcpy(&spikeBuffer[i * bytesPerChan], &timestamp, 4);
+            std::memcpy(&spikeBuffer[i * spikesBytesPerChan], &timestamp, 4);
             float32sToInt8s<oeSampsPerSpike, -250, 250>(
                 &voltageData[i * oeSampsPerSpike],
-                &spikeBuffer[i * bytesPerChan + 4 /* timestamp bytes */]);
+                &spikeBuffer[i * spikesBytesPerChan + 4 /* timestamp bytes */]);
         }
         tetFiles[spike->getChannelIndex()]->WriteBinaryData(spikeBuffer, totalBytes);
         tetSpikeCount[spike->getChannelIndex()]++;
@@ -328,6 +335,14 @@ namespace LTX {
         float sourceSampleRate,
         String text)
     {
+        if (streamId == 0) {
+            return;
+        }
+        if (startingSampleNumber != TIMESTAMP_UNINITIALIZED) {
+            LOGE("MODE:", mode, ": writeTimestampSyncText() called more than once with non-zero streamId. Aborting recording.");
+            CoreServices::setAcquisitionStatus(false);
+        }
+        startingSampleNumber = sampleNumber;
     }
 
 

@@ -88,9 +88,11 @@ namespace LTX {
             EEG_ONLY,
             POS_ONLY
         };
-        const double TIMESTAMP_UNINITIALIZED = -1;
+        const int TIMESTAMP_UNINITIALIZED = -1;
 
         RecordMode mode = RecordMode::NONE;
+
+        int64 startingSampleNumber = TIMESTAMP_UNINITIALIZED;
 
         std::unique_ptr<LTXFile> setFile;
 
