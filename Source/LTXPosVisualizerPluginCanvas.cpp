@@ -29,79 +29,91 @@ namespace LTX{
 
 	const int margin = 80;
 
-PosVisualizerPluginCanvas::PosVisualizerPluginCanvas(PosVisualizerPlugin* processor_)
-	: processor(processor_)
-{
-}
+	PosPlot::PosPlot(PosVisualizerPlugin* processor_)
+		: processor(processor_) {
+	}
+
+	PosPlot::~PosPlot(){}
+	
+	void PosPlot::paint(Graphics& g)
+	{
+		constexpr int paramW = 1000; // TODO: make this a parameter
+		constexpr int paramH = 1000; // TODO: make this a parameter
+
+		auto posSamp = reinterpret_cast<PosVisualizerPlugin*>(processor)->getLatestPosSamp();
+
+		const float pixelFactor = std::min(
+			(getWidth() - margin * 2) / static_cast<float>(paramW),
+			(getHeight() - margin * 2) / static_cast<float>(paramH)
+		);
+
+		auto toPixels = [pixelFactor](float v) -> int {
+			return margin + v * pixelFactor;
+		};
+
+		g.setColour(Colours::white);
+		g.fillRect(margin, margin, static_cast<int>(paramW*pixelFactor), static_cast<int>(paramH*pixelFactor));
+
+		g.setFont(Font("Arial", 14, Font::FontStyleFlags::bold));
+
+		if (posSamp->numpix1 > 0) {
+			g.setColour(Colours::green);
+			g.fillEllipse(toPixels(posSamp->x1), toPixels(posSamp->y1), posSamp->numpix1, posSamp->numpix1);
+			g.drawSingleLineText("(" + String(posSamp->x1) + ", " + String(posSamp->y1) + ")", toPixels(0), toPixels(paramH)+16);
+		}
 
 
-PosVisualizerPluginCanvas::~PosVisualizerPluginCanvas()
-{
+		if (posSamp->numpix2 > 0) {
+			g.setColour(Colours::red);
+			g.fillEllipse(toPixels(posSamp->x2), toPixels(posSamp->y2), posSamp->numpix2, posSamp->numpix2);
+			g.drawSingleLineText("(" + String(posSamp->x2) + ", " + String(posSamp->y2) + ")", toPixels(0), toPixels(paramH) +32);
 
-}
+		}
 
+		g.setColour(Colours::white);
+		g.drawSingleLineText(String(formatFloat(posSamp->timestamp, 1)) + "s", toPixels(paramW), toPixels(paramH) + 16, Justification::right);
 
-void PosVisualizerPluginCanvas::resized()
-{
-
-}
-
-void PosVisualizerPluginCanvas::refreshState()
-{
-
-}
-
-
-void PosVisualizerPluginCanvas::update()
-{
-
-}
-
-
-void PosVisualizerPluginCanvas::refresh()
-{
-}
-
-
-void PosVisualizerPluginCanvas::paint(Graphics& g)
-{
-	constexpr int paramW = 1000; // TODO: make this a parameter
-	constexpr int paramH = 1000; // TODO: make this a parameter
-
-	auto posSamp = reinterpret_cast<PosVisualizerPlugin*>(processor)->getLatestPosSamp();
-
-	const float pixelFactor = std::min(
-		(getWidth() - margin * 2) / static_cast<float>(paramW),
-		(getHeight() - margin * 2) / static_cast<float>(paramH)
-	);
-
-	auto toPixels = [pixelFactor](float v) -> int {
-		return margin + v * pixelFactor;
-	};
-
-	g.fillAll(Colours::black);
-
-	g.setColour(Colours::white);
-	g.fillRect(margin, margin, static_cast<int>(paramW*pixelFactor), static_cast<int>(paramH*pixelFactor));
-
-	g.setFont(Font("Arial", 14, Font::FontStyleFlags::bold));
-
-	if (posSamp->numpix1 > 0) {
-		g.setColour(Colours::green);
-		g.fillEllipse(toPixels(posSamp->x1), toPixels(posSamp->y1), posSamp->numpix1, posSamp->numpix1);
-		g.drawSingleLineText("(" + String(posSamp->x1) + ", " + String(posSamp->y1) + ")", toPixels(0), toPixels(paramH)+16);
 	}
 
 
-	if (posSamp->numpix2 > 0) {
-		g.setColour(Colours::red);
-		g.fillEllipse(toPixels(posSamp->x2), toPixels(posSamp->y2), posSamp->numpix2, posSamp->numpix2);
-		g.drawSingleLineText("(" + String(posSamp->x2) + ", " + String(posSamp->y2) + ")", toPixels(0), toPixels(paramH) +32);
+	PosVisualizerPluginCanvas::PosVisualizerPluginCanvas(PosVisualizerPlugin* processor_)
+		: processor(processor_), plt(processor_) {
+		
+		addAndMakeVisible(plt);
+		plt.setBounds(0, 0, getWidth(), getHeight());
 
 	}
 
-	g.setColour(Colours::white);
-	g.drawSingleLineText(String(formatFloat(posSamp->timestamp, 2)) + "s", toPixels(paramW), toPixels(paramH) + 16, Justification::right);
+	PosVisualizerPluginCanvas::~PosVisualizerPluginCanvas()
+	{
 
-}
+	}
+
+
+	void PosVisualizerPluginCanvas::resized()
+	{
+		plt.setBounds(0, 0, getWidth(), getHeight());
+	}
+
+	void PosVisualizerPluginCanvas::refreshState()
+	{
+
+	}
+
+
+	void PosVisualizerPluginCanvas::update()
+	{
+
+	}
+
+
+	void PosVisualizerPluginCanvas::refresh()
+	{
+	}
+
+	void PosVisualizerPluginCanvas::paint(Graphics& g){
+		g.fillAll(Colours::black);
+		plt.repaint();
+	}
+
 }

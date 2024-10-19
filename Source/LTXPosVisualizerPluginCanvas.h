@@ -31,9 +31,32 @@ class PosVisualizerPlugin;
 
 /**
 * 
-	Draws data in real time
-
+	The Visualiser behaves unusually in terms of repainting, so need an inner component
+	and then we can call repaint() on this from within the Visualiser's paint() method.
+	Otherwise we could have just had one class here.
 */
+
+class PosPlot : public Component {
+public:
+	/** Constructor */
+	PosPlot(PosVisualizerPlugin* processor);
+
+	/** Destructor */
+	~PosPlot();
+
+
+	void paint(Graphics& g) override;
+
+private:
+
+	/** Pointer to the processor class */
+	PosVisualizerPlugin* processor;
+
+	/** Generates an assertion if this class leaks */
+	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PosPlot);
+};
+
+
 class PosVisualizerPluginCanvas : public Visualizer
 {
 public:
@@ -59,13 +82,14 @@ public:
 	/** Draws the canvas background */
 	void paint(Graphics& g) override;
 
+
 private:
 
 	/** Pointer to the processor class */
 	PosVisualizerPlugin* processor;
 
 	/** Class for plotting data */
-	InteractivePlot plt;
+	PosPlot plt;
 
 	/** Generates an assertion if this class leaks */
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PosVisualizerPluginCanvas);
