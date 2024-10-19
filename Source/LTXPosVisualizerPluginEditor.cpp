@@ -23,7 +23,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
 #include "LTXPosVisualizerPluginEditor.h"
-
 #include "LTXPosVisualizerPluginCanvas.h"
 #include "LTXPosVisualizerPlugin.h"
 
@@ -31,7 +30,9 @@ namespace LTX {
 PosVisualizerPluginEditor::PosVisualizerPluginEditor(GenericProcessor* p)
     : VisualizerEditor(p, "Pos", 200)
 {
-
+    // todo: ideally state the expected format visually
+    // and then provide W and H config and pixels per meter
+     
     //addSelectedChannelsParameterEditor("Channels", 20, 105);
 
 }

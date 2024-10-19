@@ -36,6 +36,16 @@ namespace LTX {
 class PosVisualizerPlugin : public GenericProcessor
 {
 public:
+	struct PosSample {
+		float timestamp;
+		float x1;
+		float y1;
+		float x2;
+		float y2;
+		float numpix1;
+		float numpix2;
+	};
+
 	/** The class constructor, used to initialize any members.*/
 	PosVisualizerPlugin();
 
@@ -78,11 +88,14 @@ public:
 		Parameter objects*/
 	void loadCustomParametersFromXml(XmlElement* parentElement) override;
 
+	inline PosSample* getLatestPosSamp() { return &latestPosSamp; };
+
 private:
 
 	/** Generates an assertion if this class leaks */
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PosVisualizerPlugin);
 
+	PosSample latestPosSamp = {};
 };
 }
 #endif // VISUALIZERPLUGIN_H_DEFINED

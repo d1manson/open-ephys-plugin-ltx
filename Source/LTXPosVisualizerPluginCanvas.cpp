@@ -22,8 +22,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "LTXPosVisualizerPluginCanvas.h"
-
 #include "LTXPosVisualizerPlugin.h"
+#include "util.h"
 
 namespace LTX{
 
@@ -32,7 +32,6 @@ namespace LTX{
 PosVisualizerPluginCanvas::PosVisualizerPluginCanvas(PosVisualizerPlugin* processor_)
 	: processor(processor_)
 {
-
 }
 
 
@@ -61,7 +60,6 @@ void PosVisualizerPluginCanvas::update()
 
 void PosVisualizerPluginCanvas::refresh()
 {
-
 }
 
 
@@ -70,6 +68,7 @@ void PosVisualizerPluginCanvas::paint(Graphics& g)
 	constexpr int paramW = 1000; // TODO: make this a parameter
 	constexpr int paramH = 1000; // TODO: make this a parameter
 
+	auto posSamp = reinterpret_cast<PosVisualizerPlugin*>(processor)->getLatestPosSamp();
 
 	const float pixelFactor = std::min(
 		(getWidth() - margin * 2) / static_cast<float>(paramW),
@@ -85,20 +84,24 @@ void PosVisualizerPluginCanvas::paint(Graphics& g)
 	g.setColour(Colours::white);
 	g.fillRect(margin, margin, static_cast<int>(paramW*pixelFactor), static_cast<int>(paramH*pixelFactor));
 
-	// todo: get the x, y and numpix pairs from the stream
-	g.setColour(Colours::green);
+	g.setFont(Font("Arial", 14, Font::FontStyleFlags::bold));
 
-	float x = 500;
-	float y = 500;
+	if (posSamp->numpix1 > 0) {
+		g.setColour(Colours::green);
+		g.fillEllipse(toPixels(posSamp->x1), toPixels(posSamp->y1), posSamp->numpix1, posSamp->numpix1);
+		g.drawSingleLineText("(" + String(posSamp->x1) + ", " + String(posSamp->y1) + ")", toPixels(0), toPixels(paramH)+16);
+	}
 
-	g.fillEllipse(toPixels(x), toPixels(y), 8, 8);
 
-	g.setColour(Colours::red);
-	x = 550;
-	y = 515;
-	g.fillEllipse(toPixels(x), toPixels(y), 4, 4);
+	if (posSamp->numpix2 > 0) {
+		g.setColour(Colours::red);
+		g.fillEllipse(toPixels(posSamp->x2), toPixels(posSamp->y2), posSamp->numpix2, posSamp->numpix2);
+		g.drawSingleLineText("(" + String(posSamp->x2) + ", " + String(posSamp->y2) + ")", toPixels(0), toPixels(paramH) +32);
 
-	// todo: show pos timestamp
+	}
+
+	g.setColour(Colours::white);
+	g.drawSingleLineText(String(formatFloat(posSamp->timestamp, 2)) + "s", toPixels(paramW), toPixels(paramH) + 16, Justification::right);
 
 }
 }

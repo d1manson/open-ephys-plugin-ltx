@@ -56,9 +56,46 @@ void PosVisualizerPlugin::updateSettings()
 
 void PosVisualizerPlugin::process(AudioBuffer<float>& buffer)
 {
+    
+    for (auto stream : getDataStreams())
+    {
+        const uint32 numSamples = getNumSamplesInBlock(stream->getStreamId());
+        if (numSamples == 0) {
+            return;
+        }
 
-    checkForEvents(true);
-	 
+        for (auto chan : stream->getContinuousChannels()) {
+             int chanIndex = chan->getGlobalIndex();
+             float latestVal = buffer.getReadPointer(chanIndex)[numSamples-1];
+             switch (chanIndex) {
+             case 0:
+                 latestPosSamp.timestamp = latestVal;
+                 break;
+             case 1:
+                 latestPosSamp.x1 = latestVal;
+                 break;
+             case 2:
+                 latestPosSamp.y1 = latestVal;
+                 break;
+             case 3:
+                 latestPosSamp.x2 = latestVal;
+                 break;
+             case 4:
+                 latestPosSamp.y2 = latestVal;
+                 break;
+             case 5:
+                 latestPosSamp.numpix1 = latestVal;
+                 break;
+             case 6:
+                 latestPosSamp.numpix2 = latestVal;
+                 break;
+             }
+        }
+
+
+        return; // should only be one data stream
+    }
+
 }
 
 
