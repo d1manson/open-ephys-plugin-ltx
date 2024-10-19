@@ -72,7 +72,7 @@ namespace LTX {
 
         std::chrono::system_clock::time_point start_tm = std::chrono::system_clock::now(); // used to calculate duration (not sure if OpenEphys offers an alternative)
         
-        startingSampleNumber = TIMESTAMP_UNINITIALIZED;
+        startingTimestamp = TIMESTAMP_UNINITIALIZED;
 
         if (mode == RecordMode::SPIKES_AND_SET) {
             setFile = std::make_unique<LTXFile>(basePath, ".set", start_tm);
@@ -206,6 +206,15 @@ namespace LTX {
                                                    int size)
     {
 
+        while (ftsBuffer[0] < startingTimestamp && size > 0) {
+            size--;
+            ftsBuffer++;
+            dataBuffer++;
+            if (size == 0) {
+                return; // entire block of data is from before hitting record button
+            }
+        }
+
         if (mode == RecordMode::EEG_ONLY) {
             // no timestamps written in the EEG file at all
 
@@ -301,20 +310,18 @@ namespace LTX {
 
     void RecordEnginePlugin::writeSpike(int electrodeIndex, const Spike* spike)
     {
-        constexpr int totalBytes = spikesBytesPerChan * spikesNumChans;
-
         if (mode != RecordMode::SPIKES_AND_SET) {
             return;
         }
-        if (spike->getSampleNumber() < startingSampleNumber) {
+        if (spike->getTimestampInSeconds() < startingTimestamp) {
             return;
         }
-
+        constexpr int totalBytes = spikesBytesPerChan * spikesNumChans;
         const SpikeChannel* channel = getSpikeChannel(electrodeIndex);                
 
         int8 spikeBuffer[totalBytes] = {}; // initialise with zeros
 
-        int32_t timestamp = BSWAP32(static_cast<int32_t>(spike->getTimestampInSeconds() * timestampTimebase));
+        int32_t timestamp = BSWAP32(static_cast<int32_t>((spike->getTimestampInSeconds() - startingTimestamp) * timestampTimebase));
 
         const float* voltageData = spike->getDataPointer();
         for (int i = 0; i < spikesNumChans; i++)
@@ -338,11 +345,17 @@ namespace LTX {
         if (streamId == 0) {
             return;
         }
-        if (startingSampleNumber != TIMESTAMP_UNINITIALIZED) {
+        if (startingTimestamp != TIMESTAMP_UNINITIALIZED) {
             LOGE("MODE:", mode, ": writeTimestampSyncText() called more than once with non-zero streamId. Aborting recording.");
             CoreServices::setAcquisitionStatus(false);
         }
-        startingSampleNumber = sampleNumber;
+        
+        // we actually want the timestamp not the sampleNumber to match the timestamp we get in writeSpikes and writeContinous functions
+        // the sourceSampleRate passed in here seems to be zer , which is a bit odd. Also, calling getDataStream(streamId) doesn't work either.
+        sourceSampleRate = getContinuousChannel(0)->getSampleRate();
+
+        // not 100% sure this is a safe calculation to do here, but I think it probably is if we only have one stream as there's not fancy synchronization to contend with
+        startingTimestamp = static_cast<double>(sampleNumber) / sourceSampleRate;
     }
 
 

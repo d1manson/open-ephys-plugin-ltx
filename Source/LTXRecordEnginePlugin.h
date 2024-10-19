@@ -74,7 +74,7 @@ namespace LTX {
 
         /** Write the timestamp sync text messages to disk*/
         void writeTimestampSyncText(uint64 streamId,
-                                    int64 timestamp,
+                                    int64 sampleNum,
                                     float sourceSampleRate,
                                     String text);
 
@@ -92,7 +92,7 @@ namespace LTX {
 
         RecordMode mode = RecordMode::NONE;
 
-        int64 startingSampleNumber = TIMESTAMP_UNINITIALIZED;
+        double startingTimestamp = TIMESTAMP_UNINITIALIZED;
 
         std::unique_ptr<LTXFile> setFile;
 
@@ -105,7 +105,9 @@ namespace LTX {
         std::unique_ptr<LTXFile> posFile;
         uint64 posSampCount = 0;
         size_t posSampRate = 0;
-        double posFirstTimestamp = TIMESTAMP_UNINITIALIZED;
+
+        // this relates to the hacky timestamp encoded in one of the voltage streams not the proper timestamp data
+        double posFirstTimestamp = TIMESTAMP_UNINITIALIZED; 
 
         // We assume that the channels come in order so that we know when we've got all the data for a given batch of samples.
         struct PosSample {
