@@ -26,6 +26,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "LTXPosVisualizerPlugin.h"
 
 namespace LTX{
+
+	const int margin = 80;
+
 PosVisualizerPluginCanvas::PosVisualizerPluginCanvas(PosVisualizerPlugin* processor_)
 	: processor(processor_)
 {
@@ -64,8 +67,38 @@ void PosVisualizerPluginCanvas::refresh()
 
 void PosVisualizerPluginCanvas::paint(Graphics& g)
 {
+	constexpr int paramW = 1000; // TODO: make this a parameter
+	constexpr int paramH = 1000; // TODO: make this a parameter
+
+
+	const float pixelFactor = std::min(
+		(getWidth() - margin * 2) / static_cast<float>(paramW),
+		(getHeight() - margin * 2) / static_cast<float>(paramH)
+	);
+
+	auto toPixels = [pixelFactor](float v) -> int {
+		return margin + v * pixelFactor;
+	};
 
 	g.fillAll(Colours::black);
+
+	g.setColour(Colours::white);
+	g.fillRect(margin, margin, static_cast<int>(paramW*pixelFactor), static_cast<int>(paramH*pixelFactor));
+
+	// todo: get the x, y and numpix pairs from the stream
+	g.setColour(Colours::green);
+
+	float x = 500;
+	float y = 500;
+
+	g.fillEllipse(toPixels(x), toPixels(y), 8, 8);
+
+	g.setColour(Colours::red);
+	x = 550;
+	y = 515;
+	g.fillEllipse(toPixels(x), toPixels(y), 4, 4);
+
+	// todo: show pos timestamp
 
 }
 }
