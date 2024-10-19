@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "LTXGainProcessorPlugin.h"
 
 #include "LTXGainProcessorPluginEditor.h"
+#include "util.h"
 
 namespace LTX {
 
@@ -49,17 +50,6 @@ namespace LTX {
     void GainProcessorPlugin::updateSettings()
     {
         ensureParamsExist();
-    }
-
-
-    inline void multiply(uint32 size, float* buffer, float factor) {
-        // multiplies the float buffer in place
-
-        // this could presumably use SIMD instructions
-        for (; size; size--) {
-            buffer[0] *= factor;
-            buffer++;
-        }
     }
 
     void GainProcessorPlugin::process(AudioBuffer<float>& buffer)
