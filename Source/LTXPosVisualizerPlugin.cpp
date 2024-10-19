@@ -55,12 +55,38 @@ void PosVisualizerPlugin::updateSettings()
 
 
 void PosVisualizerPlugin::startRecording() {
+
+    const ScopedLock sl(lock);
     isRecording = true;
     recordedPosSamps.clear();
 }
 
 void PosVisualizerPlugin::stopRecording() {
+
+    const ScopedLock sl(lock);
     isRecording = false;
+}
+
+bool PosVisualizerPlugin::getIsRecording() {
+    const ScopedLock sl(lock);
+    return isRecording; 
+};
+
+PosVisualizerPlugin::PosSample PosVisualizerPlugin::getLatestPosSamp() {
+    const ScopedLock sl(lock);
+    return latestPosSamp;
+}
+
+std::vector<PosVisualizerPlugin::PosSample> PosVisualizerPlugin::getRecordedPosSamps() {
+    const ScopedLock sl(lock);
+    return recordedPosSamps;
+}
+
+void PosVisualizerPlugin::clearRecording() {
+    const ScopedLock sl(lock);
+    if (!isRecording) {
+        recordedPosSamps.clear();
+    }
 }
 
 void PosVisualizerPlugin::process(AudioBuffer<float>& buffer)

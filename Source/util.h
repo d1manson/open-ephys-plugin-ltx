@@ -74,4 +74,11 @@ inline std::string formatFloat(float v, int precision) {
     return stream.str();
 }
 
+inline std::string formatAsMinSecs(float v, int precision) {
+    std::stringstream stream;
+    int mins = v / 60;
+    stream << mins << " min " << std::fixed << std::setprecision(precision) << (v-mins*60) << " s";
+    return stream.str();
+}
+
 #endif // LTX_UTIL_H_INCLUDED

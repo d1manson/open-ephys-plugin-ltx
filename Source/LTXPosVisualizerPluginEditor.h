@@ -34,7 +34,7 @@ namespace LTX {
 	Includes buttons for opening the canvas in a tab or window
 */
 
-class PosVisualizerPluginEditor : public VisualizerEditor
+class PosVisualizerPluginEditor : public VisualizerEditor, Button::Listener
 {
 public:
 
@@ -47,7 +47,12 @@ public:
 	/** Creates the canvas */
 	Visualizer* createNewCanvas();
 
+	void buttonClicked(Button* button) override;
+
+
 private:
+
+	std::unique_ptr<UtilityButton> clearButton;
 
 	/** Generates an assertion if this class leaks */
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PosVisualizerPluginEditor);

@@ -35,11 +35,22 @@ PosVisualizerPluginEditor::PosVisualizerPluginEditor(GenericProcessor* p)
      
     //addSelectedChannelsParameterEditor("Channels", 20, 105);
 
+    clearButton = std::make_unique<UtilityButton>("Clear Path", Font("Fira Code", "Regular", 10));
+    clearButton->setBounds(15, 95, 100, 20);
+    clearButton->addListener(this);
+    clearButton->setTooltip("Can only clear display after recording has been stopped.");
+    addAndMakeVisible(clearButton.get()); // makes the button a child component of the editor and makes it visible
+
+
 }
 
 Visualizer* PosVisualizerPluginEditor::createNewCanvas()
 {
     return new PosVisualizerPluginCanvas((PosVisualizerPlugin*) getProcessor());;
+}
+
+void PosVisualizerPluginEditor::buttonClicked(Button* button) {
+    reinterpret_cast<PosVisualizerPlugin*>(getProcessor())->clearRecording();
 }
 
 }

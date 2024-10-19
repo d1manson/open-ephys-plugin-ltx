@@ -92,10 +92,10 @@ namespace LTX{
 		if (processor->getIsRecording()) {
 			g.setColour(Colours::red);
 			g.fillEllipse(toPixels(paramW) - 10, toPixels(paramH) + 7, 10, 10);
-			g.drawSingleLineText(String(formatFloat(posSamp.timestamp, 1)) + "s", toPixels(paramW)-16, toPixels(paramH) + 16, Justification::right);
+			g.drawSingleLineText(formatAsMinSecs(posSamp.timestamp, 1), toPixels(paramW)-16, toPixels(paramH) + 16, Justification::right);
 		} else {
 			g.setColour(Colours::white);
-			g.drawSingleLineText(String(formatFloat(posSamp.timestamp, 1)) + "s", toPixels(paramW), toPixels(paramH) + 16, Justification::right);
+			g.drawSingleLineText(formatAsMinSecs(posSamp.timestamp, 1), toPixels(paramW), toPixels(paramH) + 16, Justification::right);
 		}
 	}
 
