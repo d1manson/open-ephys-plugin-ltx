@@ -40,7 +40,6 @@ namespace LTX{
 		constexpr int paramW = 1000; // TODO: make this a parameter
 		constexpr int paramH = 1000; // TODO: make this a parameter
 
-		auto posSamp = reinterpret_cast<PosVisualizerPlugin*>(processor)->getLatestPosSamp();
 
 		const float pixelFactor = std::min(
 			(getWidth() - margin * 2) / static_cast<float>(paramW),
@@ -55,24 +54,49 @@ namespace LTX{
 		g.fillRect(margin, margin, static_cast<int>(paramW*pixelFactor), static_cast<int>(paramH*pixelFactor));
 
 		g.setFont(Font("Arial", 14, Font::FontStyleFlags::bold));
+		
+		std::vector<PosVisualizerPlugin::PosSample> recordedPosSamps = processor->getRecordedPosSamps();
 
-		if (posSamp->numpix1 > 0) {
+		// we always render the recoredPosSamps (if there are any), just in a different shade when recording is not currently active
+		g.setColour(processor->getIsRecording() ? Colours::black : Colours::grey);
+		float lastX = -1;
+		float lastY = -1;
+		for (PosVisualizerPlugin::PosSample& samp : recordedPosSamps) {
+			if  (samp.numpix1 == 0) {
+				continue;
+			}
+			if (lastX != -1) {
+				g.drawLine(toPixels(lastX), toPixels(lastY), toPixels(samp.x1), toPixels(samp.y1), 1);
+			}
+			lastX = samp.x1;
+			lastY = samp.y1;
+		}
+
+
+		// render latest pos samp as two blobs
+		PosVisualizerPlugin::PosSample posSamp = processor->getLatestPosSamp();
+
+		if (posSamp.numpix1 > 0) {
 			g.setColour(Colours::green);
-			g.fillEllipse(toPixels(posSamp->x1), toPixels(posSamp->y1), posSamp->numpix1, posSamp->numpix1);
-			g.drawSingleLineText("(" + String(posSamp->x1) + ", " + String(posSamp->y1) + ")", toPixels(0), toPixels(paramH)+16);
+			g.fillEllipse(toPixels(posSamp.x1), toPixels(posSamp.y1), posSamp.numpix1, posSamp.numpix1);
+			g.drawSingleLineText("(" + String(posSamp.x1) + ", " + String(posSamp.y1) + ")", toPixels(0), toPixels(paramH)+16);
 		}
 
-
-		if (posSamp->numpix2 > 0) {
+		if (posSamp.numpix2 > 0) {
 			g.setColour(Colours::red);
-			g.fillEllipse(toPixels(posSamp->x2), toPixels(posSamp->y2), posSamp->numpix2, posSamp->numpix2);
-			g.drawSingleLineText("(" + String(posSamp->x2) + ", " + String(posSamp->y2) + ")", toPixels(0), toPixels(paramH) +32);
-
+			g.fillEllipse(toPixels(posSamp.x2), toPixels(posSamp.y2), posSamp.numpix2, posSamp.numpix2);
+			g.drawSingleLineText("(" + String(posSamp.x2) + ", " + String(posSamp.y2) + ")", toPixels(0), toPixels(paramH) +32);
 		}
 
-		g.setColour(Colours::white);
-		g.drawSingleLineText(String(formatFloat(posSamp->timestamp, 1)) + "s", toPixels(paramW), toPixels(paramH) + 16, Justification::right);
-
+		// render timestamp
+		if (processor->getIsRecording()) {
+			g.setColour(Colours::red);
+			g.fillEllipse(toPixels(paramW) - 10, toPixels(paramH) + 7, 10, 10);
+			g.drawSingleLineText(String(formatFloat(posSamp.timestamp, 1)) + "s", toPixels(paramW)-16, toPixels(paramH) + 16, Justification::right);
+		} else {
+			g.setColour(Colours::white);
+			g.drawSingleLineText(String(formatFloat(posSamp.timestamp, 1)) + "s", toPixels(paramW), toPixels(paramH) + 16, Justification::right);
+		}
 	}
 
 

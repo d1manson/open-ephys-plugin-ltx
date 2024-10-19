@@ -88,7 +88,20 @@ public:
 		Parameter objects*/
 	void loadCustomParametersFromXml(XmlElement* parentElement) override;
 
-	inline PosSample* getLatestPosSamp() { return &latestPosSamp; };
+	void startRecording() override;
+	void stopRecording() override;
+
+	inline bool getIsRecording() { return isRecording; };
+
+	// external access to the latestPosSamp and recordedPosSamps is via a lock-and-copy operation
+	inline PosSample getLatestPosSamp() {
+		const ScopedLock sl(lock);
+		return latestPosSamp;
+	};
+	inline std::vector<PosSample> getRecordedPosSamps() { 
+		const ScopedLock sl(lock);
+		return recordedPosSamps;
+	}
 
 private:
 
@@ -96,6 +109,11 @@ private:
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PosVisualizerPlugin);
 
 	PosSample latestPosSamp = {};
+	std::vector<PosSample> recordedPosSamps;
+	bool isRecording = false;
+
+	CriticalSection lock;
+
 };
 }
 #endif // VISUALIZERPLUGIN_H_DEFINED

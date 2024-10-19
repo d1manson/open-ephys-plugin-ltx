@@ -54,8 +54,18 @@ void PosVisualizerPlugin::updateSettings()
 }
 
 
+void PosVisualizerPlugin::startRecording() {
+    isRecording = true;
+    recordedPosSamps.clear();
+}
+
+void PosVisualizerPlugin::stopRecording() {
+    isRecording = false;
+}
+
 void PosVisualizerPlugin::process(AudioBuffer<float>& buffer)
 {
+    const ScopedLock sl(lock);
     
     for (auto stream : getDataStreams())
     {
@@ -64,34 +74,46 @@ void PosVisualizerPlugin::process(AudioBuffer<float>& buffer)
             return;
         }
 
+        int offset;
+        if (isRecording) {
+            offset = recordedPosSamps.size();
+            recordedPosSamps.resize(offset + numSamples);
+        }
+
         for (auto chan : stream->getContinuousChannels()) {
              int chanIndex = chan->getGlobalIndex();
-             float latestVal = buffer.getReadPointer(chanIndex)[numSamples-1];
-             switch (chanIndex) {
-             case 0:
-                 latestPosSamp.timestamp = latestVal;
-                 break;
-             case 1:
-                 latestPosSamp.x1 = latestVal;
-                 break;
-             case 2:
-                 latestPosSamp.y1 = latestVal;
-                 break;
-             case 3:
-                 latestPosSamp.x2 = latestVal;
-                 break;
-             case 4:
-                 latestPosSamp.y2 = latestVal;
-                 break;
-             case 5:
-                 latestPosSamp.numpix1 = latestVal;
-                 break;
-             case 6:
-                 latestPosSamp.numpix2 = latestVal;
-                 break;
+             for (int i = 0; i < numSamples; i++) {
+                 float v = buffer.getReadPointer(chanIndex)[i];
+                 PosSample& samp = isRecording ? recordedPosSamps[offset + i] : latestPosSamp;
+                 switch (chanIndex) {
+                 case 0:
+                     samp.timestamp = v;
+                     break;
+                 case 1:
+                     samp.x1 = v;
+                     break;
+                 case 2:
+                     samp.y1 = v;
+                     break;
+                 case 3:
+                     samp.x2 = v;
+                     break;
+                 case 4:
+                     samp.y2 = v;
+                     break;
+                 case 5:
+                     samp.numpix1 = v;
+                     break;
+                 case 6:
+                     samp.numpix2 = v;
+                     break;
+                 }
              }
         }
 
+        if (isRecording) {
+            std::memcpy(&latestPosSamp, &recordedPosSamps.back(), sizeof(PosSample));
+        }
 
         return; // should only be one data stream
     }
