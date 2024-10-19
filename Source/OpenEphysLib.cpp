@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "LTXRecordEnginePlugin.h"
 #include "LTXGainProcessorPlugin.h"
 #include "LTXGainProcessorPlugin.h"
+#include "LTXPosVisualizerPlugin.h"
 
 #include <string>
 
@@ -37,7 +38,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using namespace Plugin;
 
-#define NUM_PLUGINS 2
+#define NUM_PLUGINS 3
 
 extern "C" EXPORT void getLibInfo(Plugin::LibraryInfo* info)
 {
@@ -68,6 +69,12 @@ extern "C" EXPORT int getPluginInfo(int index, Plugin::PluginInfo* info)
 		info->processor.creator = &(Plugin::createProcessor<LTX::GainProcessorPlugin>);
 		break;
 
+    case 2:
+		info->type = Plugin::Type::PROCESSOR;
+		info->processor.name = "Pos Visualizer";
+		info->processor.type = Processor::Type::SINK;
+		info->processor.creator = &(Plugin::createProcessor<LTX::PosVisualizerPlugin>);
+		break;
 
 	default:
 		return -1;
