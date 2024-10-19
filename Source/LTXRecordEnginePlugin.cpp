@@ -35,8 +35,7 @@ namespace LTX {
     constexpr int spikesBytesPerChan = 4 /* 4 byte timestamp */ + 50 /* one-byte voltage for 50 samples */;
     constexpr int oeSampsPerSpike = 40; // seems to be hard-coded as 8+32 = 40
 
- 
-    RecordEnginePlugin::RecordEnginePlugin(){}
+    RecordEnginePlugin::RecordEnginePlugin() {}
 
     RecordEnginePlugin::~RecordEnginePlugin() {}
 
@@ -54,24 +53,27 @@ namespace LTX {
         if (getNumRecordedSpikeChannels() > 0) {
             mode = RecordMode::SPIKES_AND_SET;
             LOGC("LTX RecordEngine using mode:SPIKES_AND_SET (", mode, ").");
-        } else if (getNumRecordedContinuousChannels() == 0) {
+        }
+        else if (getNumRecordedContinuousChannels() == 0) {
             LOGE("No spikes and no continous channels, nothing to record.");
             mode = RecordMode::NONE;
             return;
-        } else if (getContinuousChannel(0)->getStreamName() == "bonsai") {
+        }
+        else if (getContinuousChannel(0)->getStreamName() == "bonsai") {
             mode = RecordMode::POS_ONLY; // first continuous channel is bonsai data, treat as pos
             LOGC("LTX RecordEngine using mode:POS_ONLY (", mode, ").");
-        } else {
+        }
+        else {
             mode = RecordMode::EEG_ONLY;
             LOGC("LTX RecordEngine using mode:EEG_ONLY (", mode, ").");
         }
 
         std::string basePath = rootFolder.getParentDirectory().getFullPathName().toStdString()
             + (experimentNumber == 1 ? "" : " e" + std::to_string(experimentNumber))
-            + (recordingNumber == 0 ? "" : " r" + std::to_string(recordingNumber+1));
+            + (recordingNumber == 0 ? "" : " r" + std::to_string(recordingNumber + 1));
 
         std::chrono::system_clock::time_point start_tm = std::chrono::system_clock::now(); // used to calculate duration (not sure if OpenEphys offers an alternative)
-        
+
         startingTimestamp = TIMESTAMP_UNINITIALIZED;
 
         if (mode == RecordMode::SPIKES_AND_SET) {
@@ -84,12 +86,12 @@ namespace LTX {
             setFile->AddHeaderValue("lightBearing_2", 180);
             setFile->AddHeaderValue("lightBearing_3", 0);
             setFile->AddHeaderValue("lightBearing_4", 0);
-            
+
 
             tetFiles.clear();
             tetSpikeCount.clear();
             for (int i = 0; i < getNumRecordedSpikeChannels(); i++) {
-                // could of important checks before we get going...
+                // couple of important checks before we get going...
                 const SpikeChannel* channel = getSpikeChannel(i);
                 if (channel->getNumChannels() != spikesNumChans) {
                     LOGE("Expected exactly 4 channels for a spike, but found ", channel->getNumChannels());
@@ -109,16 +111,25 @@ namespace LTX {
                 f->AddHeaderValue("samples_per_spike", 50);
                 f->AddHeaderValue("bytes_per_sample", 1);
                 f->AddHeaderValue("spike_format", "t,ch1,t,ch2,t,ch3,t,ch4");
-                f->AddHeaderValue("sample_rate", std::to_string(getSpikeChannel(i)->getSampleRate()) + " hz"); 
+                f->AddHeaderValue("sample_rate", std::to_string(getSpikeChannel(i)->getSampleRate()) + " hz");
                 f->AddHeaderValue("timebase", std::to_string(timestampTimebase) + " hz");
                 f->AddHeaderPlaceholder("num_spikes");
                 tetSpikeCount.push_back(0);
             }
-        } else if (mode == RecordMode::EEG_ONLY){ 
+        }
+        else if (mode == RecordMode::EEG_ONLY) {
             eegFiles.clear();
             eegFullSampCount.clear();
-            for (int i = 0; i < getNumRecordedContinuousChannels(); i++){ 
-               eegFiles.push_back(std::make_unique<LTXFile>(basePath, ".efg" + (i == 0 ? "" : std::to_string(i + 1)), start_tm));
+            for (int i = 0; i < getNumRecordedContinuousChannels(); i++) {
+                // important check before we get going...
+                const ContinuousChannel* channel = getContinuousChannel(i);
+                if (channel->getSampleRate() != eegInputSampRate) {
+                    LOGE("Expected a sample rate of exactly ", eegInputSampRate, ", but found ", channel->getSampleRate());
+                    CoreServices::setAcquisitionStatus(false);
+                    return;
+                }
+
+                eegFiles.push_back(std::make_unique<LTXFile>(basePath, ".efg" + (i == 0 ? "" : std::to_string(i + 1)), start_tm));
                 LTXFile* f = eegFiles.back().get();
                 f->AddHeaderValue("num_chans", 1);
                 f->AddHeaderValue("sample_rate", std::to_string(eegOutputSampRate) + " hz");
@@ -135,19 +146,19 @@ namespace LTX {
             }
 
             posFile = std::make_unique<LTXFile>(basePath, ".pos", start_tm);
-            
+
             posSampRate = getContinuousChannel(0)->getSampleRate();
             posFile->AddHeaderValue("timestamp_timebase", std::to_string(timestampTimebase) + " hz");
             posFile->AddHeaderValue("timebase", std::to_string(posSampRate) + " hz"); // required by Waveform GUI at least, maybe other code
             posFile->AddHeaderValue("sample_rate", std::to_string(posSampRate) + " hz");
-            
+
             posFile->AddHeaderValue("bytes_per_timestamp", 4);
             posFile->AddHeaderValue("bytes_per_coord", 2);
-            
+
             posFile->AddHeaderValue("pos_format", "t,x1,y1,x2,y2,numpix1,numpix2");
 
             // no idea if this is needed for anything. dummy values...
-            posFile->AddHeaderValue("num_colours", 4); 
+            posFile->AddHeaderValue("num_colours", 4);
             posFile->AddHeaderValue("bearing_colour_1", 330);
             posFile->AddHeaderValue("bearing_colour_2", 150);
             posFile->AddHeaderValue("bearing_colour_3", 0);
@@ -165,7 +176,7 @@ namespace LTX {
             posFile->AddHeaderValue("max_x", posWindowSize);
             posFile->AddHeaderValue("min_y", 0);
             posFile->AddHeaderValue("max_y", posWindowSize);
-           
+
             posFile->AddHeaderPlaceholder("num_pos_samples");
             posSampCount = 0;
             posFirstTimestamp = TIMESTAMP_UNINITIALIZED; // gets initialised using the first continuous data below
@@ -177,20 +188,22 @@ namespace LTX {
     void RecordEnginePlugin::closeFiles()
     {
         std::chrono::system_clock::time_point end_tm = std::chrono::system_clock::now();
-           
+
         if (mode == SPIKES_AND_SET) {
             setFile->FinaliseFile(end_tm);
-            
+
             for (int i = 0; i < tetFiles.size(); i++) {
                 tetFiles[i]->FinaliseHeaderPlaceholder(tetSpikeCount[i]);
                 tetFiles[i]->FinaliseFile(end_tm);
             }
-        } else if(mode == RecordMode::EEG_ONLY){
+        }
+        else if (mode == RecordMode::EEG_ONLY) {
             for (int i = 0; i < eegFiles.size(); i++) {
                 eegFiles[i]->FinaliseHeaderPlaceholder(eegFullSampCount[i] / eegDownsampleBy);
                 eegFiles[i]->FinaliseFile(end_tm);
             }
-        } else if (mode == RecordMode::POS_ONLY) {
+        }
+        else if (mode == RecordMode::POS_ONLY) {
             posFile->FinaliseHeaderPlaceholder(posSampCount);
             posFile->FinaliseFile(end_tm);
         }
@@ -200,11 +213,15 @@ namespace LTX {
     }
 
     void RecordEnginePlugin::writeContinuousData(int writeChannel,
-                                                   int realChannel,
-                                                   const float* dataBuffer,
-                                                   const double* ftsBuffer,
-                                                   int size)
+        int realChannel,
+        const float* dataBuffer,
+        const double* ftsBuffer,
+        int size)
     {
+
+        if (mode == RecordMode::SPIKES_AND_SET) {
+            return;
+        }
 
         while (ftsBuffer[0] < startingTimestamp && size > 0) {
             size--;
@@ -217,47 +234,33 @@ namespace LTX {
 
         if (mode == RecordMode::EEG_ONLY) {
             // no timestamps written in the EEG file at all
-
             constexpr int outputBufferSize = 1024;
-            const ContinuousChannel* channel = getContinuousChannel(realChannel);
-            
-            if (channel->getSampleRate() != eegInputSampRate) {
-                LOGE("Expected a sample rate of exactly ", eegInputSampRate, ", but found ", channel->getSampleRate());
-                return;
-            }
-
             if (size / eegDownsampleBy + 1 > outputBufferSize) {
                 LOGE("size / downsampleBy +1 = ", size, " / ", eegDownsampleBy, " +1 is greater than expected (expected ", outputBufferSize, ")");
+                CoreServices::setAcquisitionStatus(false);
                 return;
             }
 
-            // TODO: can we do better here using intrinsics, similar to float32sToInt8s, but with a take step size?
-            //       maybe some kind of gather op?
             uint64 remainder = eegFullSampCount[writeChannel] % eegDownsampleBy;
-            int8_t eegBuffer[outputBufferSize] = {}; // initialise with zeros
-            const float bitVolts = channel->getBitVolts();
-            size_t nSampsWritten = 0;
-            for (int i = remainder == 0 ? 0 : eegDownsampleBy - remainder; i < size; i += eegDownsampleBy) {
-                float voltage8bit = dataBuffer[i] / (bitVolts * 4);
-                if (voltage8bit > 127) voltage8bit = 127;
-                if (voltage8bit < -128) voltage8bit = -128;
-                eegBuffer[nSampsWritten++] = static_cast<int8_t>(voltage8bit);
-            }
-
+            uint64 offset = remainder == 0 ? 0 : eegDownsampleBy - remainder;
+            int8_t eegBuffer[outputBufferSize]; // warning: not initialised
+            int64 nSampsWritten = float32sToInt8sDownsampled<outputBufferSize, -250, 250, eegDownsampleBy >(
+                &dataBuffer[offset], eegBuffer, size - offset);
             eegFiles[writeChannel]->WriteBinaryData(eegBuffer, nSampsWritten);
             eegFullSampCount[writeChannel] += size;
+
         } else if (mode == RecordMode::POS_ONLY) {
 
-            if (posFirstTimestamp == TIMESTAMP_UNINITIALIZED && writeChannel == 0) { 
-               posFirstTimestamp = dataBuffer[0];
-               if (posFirstTimestamp > 4*60*60 /* 4 hours in seconds = 14400 */) {
-                   LOGE("POS recording started with 32bit floating point timestamp: ", posFirstTimestamp, " seconds. That's quite large; you won't get many decimal places of precision. "
-                       "Stopping acquistion now. When you restart acquisition, the timestamp will begin at 0seconds, which will work much better.");
-                   // note this is talking about the timestamp we recieve from the Bonsai source; the timestamps we record below will always start from zero, but they will inherit
-                   // the precision provided by the Bonsai source, hence the check here. Note we are checking at the start of the recording, so we use an even more conservative threshold.
-                   CoreServices::setAcquisitionStatus(false);
-                   return;
-               }
+            if (posFirstTimestamp == TIMESTAMP_UNINITIALIZED && writeChannel == 0) {
+                posFirstTimestamp = dataBuffer[0];
+                if (posFirstTimestamp > 4 * 60 * 60 /* 4 hours in seconds = 14400 */) {
+                    LOGE("POS recording started with 32bit floating point timestamp: ", posFirstTimestamp, " seconds. That's quite large; you won't get many decimal places of precision. "
+                        "Stopping acquistion now. When you restart acquisition, the timestamp will begin at 0seconds, which will work much better.");
+                    // note this is talking about the timestamp we recieve from the Bonsai source; the timestamps we record below will always start from zero, but they will inherit
+                    // the precision provided by the Bonsai source, hence the check here. Note we are checking at the start of the recording, so we use an even more conservative threshold.
+                    CoreServices::setAcquisitionStatus(false);
+                    return;
+                }
             }
 
             // Note we are assuming that channels came in order so that when we get the 0th one first
@@ -274,14 +277,13 @@ namespace LTX {
                 }
             } else {
                 for (int i = 0; i < size; i++) {
-                    posSamplesBuffer[i].xy_etc[writeChannel-1] = BSWAP16(static_cast<uint16_t>(dataBuffer[i]));
+                    posSamplesBuffer[i].xy_etc[writeChannel - 1] = BSWAP16(static_cast<uint16_t>(dataBuffer[i]));
                 }
 
                 if (writeChannel == requiredPosChans - 1) {
                     posFile->WriteBinaryData(static_cast<void*>(posSamplesBuffer.data()), sizeof(PosSample) * size);
                 }
             }
-            
         }
 
     }
@@ -293,22 +295,8 @@ namespace LTX {
     }
 
 
-    template <size_t N, int Min, int Max>
-    inline void float32sToInt8s(const float* src, int8* dest) {
-        static_assert(N == 40, "expected 40 samples per spike");
-        static_assert(Min == -250 && Max == 250, "expected input range [-250,250]");
-
-        // TODO: for N=40, use SIMD 512bit intrinsics three times, rather than a loop
-        //       may need to copy into a properly aligned float[48] buffer, with zero padding at the end
-        //       should be able to make that static as the zeros will never be overwritten
-        //       can then use 16,16,16 float operations. Think there might even be a builtin way to "saturate" the cast
-        for (int i = 0; i < N; i++) {
-            int32 v = static_cast<int32>(src[i]) / 2; // see static_assert above regarding expected input range [-250,250]
-            dest[i] = std::min(std::max(v, -128), 127);
-        }
-    }
-
-    void RecordEnginePlugin::writeSpike(int electrodeIndex, const Spike* spike)
+        
+    void RecordEnginePlugin::writeSpike(int electrodeIndex, const Spike * spike)
     {
         if (mode != RecordMode::SPIKES_AND_SET) {
             return;
@@ -317,7 +305,7 @@ namespace LTX {
             return;
         }
         constexpr int totalBytes = spikesBytesPerChan * spikesNumChans;
-        const SpikeChannel* channel = getSpikeChannel(electrodeIndex);                
+        const SpikeChannel* channel = getSpikeChannel(electrodeIndex);
 
         int8 spikeBuffer[totalBytes] = {}; // initialise with zeros
 
@@ -349,7 +337,7 @@ namespace LTX {
             LOGE("MODE:", mode, ": writeTimestampSyncText() called more than once with non-zero streamId. Aborting recording.");
             CoreServices::setAcquisitionStatus(false);
         }
-        
+
         // we actually want the timestamp not the sampleNumber to match the timestamp we get in writeSpikes and writeContinous functions
         // the sourceSampleRate passed in here seems to be zer , which is a bit odd. Also, calling getDataStream(streamId) doesn't work either.
         sourceSampleRate = getContinuousChannel(0)->getSampleRate();
@@ -359,4 +347,4 @@ namespace LTX {
     }
 
 
-}
+    }
