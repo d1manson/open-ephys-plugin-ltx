@@ -28,7 +28,7 @@
 namespace LTX {
 
 PosVisualizerPlugin::PosVisualizerPlugin()
-    : GenericProcessor("Pos Visualizer")
+    : GenericProcessor("Pos Viewer")
 {
 
 }

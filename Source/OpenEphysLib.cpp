@@ -71,7 +71,7 @@ extern "C" EXPORT int getPluginInfo(int index, Plugin::PluginInfo* info)
 
     case 2:
 		info->type = Plugin::Type::PROCESSOR;
-		info->processor.name = "Pos Visualizer";
+		info->processor.name = "Pos Viewer";
 		info->processor.type = Processor::Type::SINK;
 		info->processor.creator = &(Plugin::createProcessor<LTX::PosVisualizerPlugin>);
 		break;
