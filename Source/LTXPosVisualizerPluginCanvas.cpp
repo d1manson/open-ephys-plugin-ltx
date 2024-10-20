@@ -40,6 +40,10 @@ namespace LTX{
 		constexpr int paramW = 1000; // TODO: make this a parameter
 		constexpr int paramH = 1000; // TODO: make this a parameter
 
+        bool isRecording = processor->getIsRecording();
+		std::vector<PosVisualizerPlugin::PosPoint> recordedPosPoints = processor->getRecordedPosPoints();
+        PosVisualizerPlugin::PosSample posSamp = processor->getLatestPosSamp();
+
 
 		const float pixelFactor = std::min(
 			(getWidth() - margin * 2) / static_cast<float>(paramW),
@@ -55,26 +59,19 @@ namespace LTX{
 
 		g.setFont(Font("Arial", 14, Font::FontStyleFlags::bold));
 		
-		std::vector<PosVisualizerPlugin::PosSample> recordedPosSamps = processor->getRecordedPosSamps();
 
-		// we always render the recoredPosSamps (if there are any), just in a different shade when recording is not currently active
-		g.setColour(processor->getIsRecording() ? Colours::black : Colours::grey);
-		float lastX = -1;
-		float lastY = -1;
-		for (PosVisualizerPlugin::PosSample& samp : recordedPosSamps) {
-			if  (samp.numpix1 == 0) {
-				continue;
-			}
-			if (lastX != -1) {
-				g.drawLine(toPixels(lastX), toPixels(lastY), toPixels(samp.x1), toPixels(samp.y1), 1);
-			}
-			lastX = samp.x1;
-			lastY = samp.y1;
+        if(recordedPosPoints.size()){
+            // we always render the recordedPosPoints (if there are any), just in a different shade when recording is not currently active
+            g.setColour(isRecording ? Colours::black : Colours::grey);
+            PosVisualizerPlugin::PosPoint lastPoint = recordedPosPoints[0];
+            for (PosVisualizerPlugin::PosPoint& point : recordedPosPoints) {
+                g.drawLine(toPixels(lastPoint.x), toPixels(lastPoint.y), toPixels(point.x), toPixels(point.y), 1);
+                lastPoint = point;
+            }
 		}
 
 
 		// render latest pos samp as two blobs
-		PosVisualizerPlugin::PosSample posSamp = processor->getLatestPosSamp();
 
 		if (posSamp.numpix1 > 0) {
 			g.setColour(Colours::green);
@@ -89,7 +86,7 @@ namespace LTX{
 		}
 
 		// render timestamp
-		if (processor->getIsRecording()) {
+		if (isRecording) {
 			g.setColour(Colours::red);
 			g.fillEllipse(toPixels(paramW) - 10, toPixels(paramH) + 7, 10, 10);
 			g.drawSingleLineText(formatAsMinSecs(posSamp.timestamp, 1), toPixels(paramW)-16, toPixels(paramH) + 16, Justification::right);

@@ -55,14 +55,12 @@ void PosVisualizerPlugin::updateSettings()
 
 
 void PosVisualizerPlugin::startRecording() {
-
     const ScopedLock sl(lock);
     isRecording = true;
-    recordedPosSamps.clear();
+    recordedPosPoints.clear();
 }
 
 void PosVisualizerPlugin::stopRecording() {
-
     const ScopedLock sl(lock);
     isRecording = false;
 }
@@ -77,15 +75,15 @@ PosVisualizerPlugin::PosSample PosVisualizerPlugin::getLatestPosSamp() {
     return latestPosSamp;
 }
 
-std::vector<PosVisualizerPlugin::PosSample> PosVisualizerPlugin::getRecordedPosSamps() {
+std::vector<PosVisualizerPlugin::PosPoint> PosVisualizerPlugin::getRecordedPosPoints() {
     const ScopedLock sl(lock);
-    return recordedPosSamps;
+    return recordedPosPoints;
 }
 
 void PosVisualizerPlugin::clearRecording() {
     const ScopedLock sl(lock);
     if (!isRecording) {
-        recordedPosSamps.clear();
+        recordedPosPoints.clear();
     }
 }
 
@@ -100,45 +98,56 @@ void PosVisualizerPlugin::process(AudioBuffer<float>& buffer)
             return;
         }
 
-        int offset;
         if (isRecording) {
-            offset = recordedPosSamps.size();
-            recordedPosSamps.resize(offset + numSamples);
+            // store x1 and y1 values into recordedPosPoints for all samples
+            int originalSize = recordedPosPoints.size();
+            recordedPosPoints.resize(originalSize + numSamples);
+            for (auto chan : stream->getContinuousChannels()) {
+                int chanIndex = chan->getGlobalIndex();
+                if(chanIndex == ChannelMapping::x1) {
+                    for (int i = 0; i < numSamples; i++) {
+                        recordedPosPoints[originalSize + i].x = buffer.getReadPointer(chanIndex)[i];
+                    }
+                } else if (chanIndex == ChannelMapping::y1) {
+                    for (int i = 0; i < numSamples; i++) {
+                        recordedPosPoints[originalSize + i].y = buffer.getReadPointer(chanIndex)[i];
+                   }
+                }
+                // we don't check numpix1, instead we assume x1 will be nan already if numpix1 is 0
+                recordedPosPoints.erase(
+                    std::remove_if(recordedPosPoints.begin() + originalSize, recordedPosPoints.end(),
+                        [](const PosPoint& samp) { return std::isnan(samp.x); }),
+                        recordedPosPoints.end());
+            }
         }
 
+        // get the last value into latestPosSamp
         for (auto chan : stream->getContinuousChannels()) {
              int chanIndex = chan->getGlobalIndex();
-             for (int i = 0; i < numSamples; i++) {
-                 float v = buffer.getReadPointer(chanIndex)[i];
-                 PosSample& samp = isRecording ? recordedPosSamps[offset + i] : latestPosSamp;
-                 switch (chanIndex) {
-                 case 0:
-                     samp.timestamp = v;
-                     break;
-                 case 1:
-                     samp.x1 = v;
-                     break;
-                 case 2:
-                     samp.y1 = v;
-                     break;
-                 case 3:
-                     samp.x2 = v;
-                     break;
-                 case 4:
-                     samp.y2 = v;
-                     break;
-                 case 5:
-                     samp.numpix1 = v;
-                     break;
-                 case 6:
-                     samp.numpix2 = v;
-                     break;
-                 }
+             float v = buffer.getReadPointer(chanIndex)[numSamples-1];
+             switch (chanIndex) {
+             case ChannelMapping::Timestamp:
+                 latestPosSamp.timestamp = v;
+                 break;
+             case ChannelMapping::x1:
+                 latestPosSamp.x1 = v;
+                 break;
+             case ChannelMapping::y1:
+                 latestPosSamp.y1 = v;
+                 break;
+             case ChannelMapping::x2:
+                 latestPosSamp.x2 = v;
+                 break;
+             case ChannelMapping::y2:
+                 latestPosSamp.y2 = v;
+                 break;
+             case ChannelMapping::numpix1:
+                 latestPosSamp.numpix1 = v;
+                 break;
+             case ChannelMapping::numpix2:
+                 latestPosSamp.numpix2 = v;
+                 break;
              }
-        }
-
-        if (isRecording) {
-            std::memcpy(&latestPosSamp, &recordedPosSamps.back(), sizeof(PosSample));
         }
 
         return; // should only be one data stream

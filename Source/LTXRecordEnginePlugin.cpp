@@ -34,6 +34,7 @@ namespace LTX {
     constexpr int spikesNumChans = 4;
     constexpr int spikesBytesPerChan = 4 /* 4 byte timestamp */ + 50 /* one-byte voltage for 50 samples */;
     constexpr int oeSampsPerSpike = 40; // seems to be hard-coded as 8+32 = 40
+    constexpr int posTimestampChannel = 0; // provided by the bonsai source plugin
 
     RecordEnginePlugin::RecordEnginePlugin() {}
 
@@ -267,7 +268,7 @@ namespace LTX {
             // and when we get the last one we can assume we've seen the all and they all had the same size.
             // Hopefully a safe assumption, but i haven't actually checked the existing implementation in the core codebase.
 
-            if (writeChannel == 0) {
+            if (writeChannel == posTimestampChannel) {
                 posSamplesBuffer.resize(size);
                 std::memset(posSamplesBuffer.data(), 0, size * sizeof(posSamplesBuffer));
                 posSampCount += size;

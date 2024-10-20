@@ -36,6 +36,19 @@ namespace LTX {
 class PosVisualizerPlugin : public GenericProcessor
 {
 public:
+
+   /* note that the record engine only explicitly knows channel zero is the timestamp channel, for the others
+    * it just converts to int16 and stores the value without worrying about the semantic meaning. */
+	enum ChannelMapping {
+		Timestamp = 0,
+		x1 = 1,
+		y1 = 2,
+		x2 = 3,
+		y2 = 4,
+		numpix1 = 5,
+		numpix2 = 6
+	};
+
 	struct PosSample {
 		float timestamp;
 		float x1;
@@ -45,6 +58,11 @@ public:
 		float numpix1;
 		float numpix2;
 	};
+
+    struct PosPoint {
+        float x;
+        float y;
+    };
 
 	/** The class constructor, used to initialize any members.*/
 	PosVisualizerPlugin();
@@ -93,21 +111,27 @@ public:
 
 	bool getIsRecording();
 
-	// external access to the latestPosSamp and recordedPosSamps is via a lock-and-copy operation
+	// external access to the latestPosSamp and recordedPosPoints is via a lock-and-copy operation
+	// which is a simple way to avoid crashes due to concurrent access to memory, especially the std::vector.
+
 	PosSample getLatestPosSamp();
-	std::vector<PosSample> getRecordedPosSamps();
+
+	/* Returns a copy of the recordedPosPoints vector. Any nan data points have been pre-filtered out. */
+	std::vector<PosPoint> getRecordedPosPoints();
+
+	/* If recording is no long active it is possible to wipe the recording from the visualisation */
 	void clearRecording();
 
 private:
 
-	/** Generates an assertion if this class leaks */
-	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PosVisualizerPlugin);
-
 	PosSample latestPosSamp = {};
-	std::vector<PosSample> recordedPosSamps;
+	std::vector<PosPoint> recordedPosPoints;
 	bool isRecording = false;
 
 	CriticalSection lock;
+
+	/** Generates an assertion if this class leaks */
+	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PosVisualizerPlugin);
 
 };
 }
