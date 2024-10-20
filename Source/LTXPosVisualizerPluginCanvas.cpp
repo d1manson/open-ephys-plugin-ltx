@@ -33,6 +33,7 @@ namespace LTX{
 		: processor(processor_) {
 		paramWidth = reinterpret_cast<IntParameter*>(processor->getParameter("Width"));
 		paramHeight = reinterpret_cast<IntParameter*>(processor->getParameter("Height"));
+		paramPPM = reinterpret_cast<FloatParameter*>(processor->getParameter("PPM"));
 	}
 
 	PosPlot::~PosPlot(){}
@@ -41,6 +42,7 @@ namespace LTX{
 	{
 		float W = static_cast<float>(paramWidth->getValue());
 		float H = static_cast<float>(paramHeight->getValue());
+		float ppm = paramPPM->getValue();
 
         bool isRecording = processor->getIsRecording();
 		std::vector<PosVisualizerPlugin::PosPoint> recordedPosPoints = processor->getRecordedPosPoints();
@@ -59,7 +61,12 @@ namespace LTX{
 		g.fillRect(margin, margin, static_cast<int>(W*pixelFactor), static_cast<int>(H*pixelFactor));
 
 		g.setFont(Font("Arial", 14, Font::FontStyleFlags::bold));
-		
+
+		g.drawSingleLineText("< " + formatFloat(W * 100 / ppm, 0) + "cm >", toXPixels(W / 2), toYPixels(0) - 6, Justification::centred);
+		g.saveState();
+		g.addTransform(AffineTransform::rotation(-MathConstants<float>::halfPi, toXPixels(0) - 6, toYPixels(H / 2)));
+		g.drawSingleLineText("< " + formatFloat(H * 100 / ppm, 0) + "cm >", toXPixels(0) - 6, toYPixels(H / 2), Justification::centred);
+		g.restoreState();
 
         if(recordedPosPoints.size()){
             // we always render the recordedPosPoints (if there are any), just in a different shade when recording is not currently active

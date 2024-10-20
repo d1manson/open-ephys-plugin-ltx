@@ -29,7 +29,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace LTX {
 PosVisualizerPluginEditor::PosVisualizerPluginEditor(GenericProcessor* p)
-    : VisualizerEditor(p, "Pos", 200)
+    : VisualizerEditor(p, "Pos", 190)
 {
     // todo: show inline latest pos
     
