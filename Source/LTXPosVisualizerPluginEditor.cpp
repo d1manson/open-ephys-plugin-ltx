@@ -25,23 +25,43 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "LTXPosVisualizerPluginEditor.h"
 #include "LTXPosVisualizerPluginCanvas.h"
 #include "LTXPosVisualizerPlugin.h"
+#include "util.h"
 
 namespace LTX {
 PosVisualizerPluginEditor::PosVisualizerPluginEditor(GenericProcessor* p)
     : VisualizerEditor(p, "Pos", 200)
 {
-    // todo: ideally state the expected format visually
-    // and then provide W and H config and pixels per meter
-     
-    //addSelectedChannelsParameterEditor("Channels", 20, 105);
-
+    // todo: show inline latest pos
+    
+    addTextBoxParameterEditor("Width", 10, 25);
+    addTextBoxParameterEditor("Height", 100, 25);
+    addTextBoxParameterEditor("PPM", 10, 65);
+    
     clearButton = std::make_unique<UtilityButton>("Clear Path", Font("Fira Code", "Regular", 10));
-    clearButton->setBounds(15, 95, 100, 20);
+    clearButton->setBounds(100, 83, 80, 20);
     clearButton->addListener(this);
     clearButton->setTooltip("Can only clear display after recording has been stopped.");
     addAndMakeVisible(clearButton.get()); // makes the button a child component of the editor and makes it visible
+    
+    infoText = std::make_unique<Label>("info text");
+    infoText->setFont(Font(12));
+    infoText->setBounds(10, 108, 180, 20);
+    infoText->setColour(Label::textColourId, Colours::black);
+    addAndMakeVisible(infoText.get());
 
+    startTimer(50);
+}
 
+void PosVisualizerPluginEditor::timerCallback() {
+    PosVisualizerPlugin::PosSample posSamp = reinterpret_cast<PosVisualizerPlugin*>(getProcessor())->getLatestPosSamp();
+
+    if (posSamp.timestamp == 0) {
+        infoText->setText("t,x1,y1,x2,y2,numpix1,numpix2", dontSendNotification);
+    } else {
+        infoText->setText(
+            String(formatAsMinSecs(posSamp.timestamp, 1)) + " (" + String(posSamp.x1) + ", " + String(posSamp.y1) + ")",
+            dontSendNotification);
+    }
 }
 
 Visualizer* PosVisualizerPluginEditor::createNewCanvas()

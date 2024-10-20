@@ -30,7 +30,10 @@ namespace LTX {
 PosVisualizerPlugin::PosVisualizerPlugin()
     : GenericProcessor("Pos Viewer")
 {
-
+    this->addIntParameter(Parameter::GLOBAL_SCOPE, "Width", "Window Width", 1000, 200, 5000, false);
+    this->addIntParameter(Parameter::GLOBAL_SCOPE, "Height", "Window Height", 1000, 200, 5000, false);
+    this->addFloatParameter(Parameter::GLOBAL_SCOPE, "PPM", "Pixels Per Meter", 400.0f, 100.0f, 1000.0f, 0.1, false);
+    
 }
 
 

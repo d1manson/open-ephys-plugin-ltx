@@ -31,14 +31,16 @@ namespace LTX{
 
 	PosPlot::PosPlot(PosVisualizerPlugin* processor_)
 		: processor(processor_) {
+		paramWidth = reinterpret_cast<IntParameter*>(processor->getParameter("Width"));
+		paramHeight = reinterpret_cast<IntParameter*>(processor->getParameter("Height"));
 	}
 
 	PosPlot::~PosPlot(){}
 	
 	void PosPlot::paint(Graphics& g)
 	{
-		constexpr int paramW = 1000; // TODO: make this a parameter
-		constexpr int paramH = 1000; // TODO: make this a parameter
+		float W = static_cast<float>(paramWidth->getValue());
+		float H = static_cast<float>(paramHeight->getValue());
 
         bool isRecording = processor->getIsRecording();
 		std::vector<PosVisualizerPlugin::PosPoint> recordedPosPoints = processor->getRecordedPosPoints();
@@ -46,16 +48,15 @@ namespace LTX{
 
 
 		const float pixelFactor = std::min(
-			(getWidth() - margin * 2) / static_cast<float>(paramW),
-			(getHeight() - margin * 2) / static_cast<float>(paramH)
+			(getWidth() - margin * 2) / static_cast<float>(W),
+			(getHeight() - margin * 2) / static_cast<float>(H)
 		);
 
-		auto toPixels = [pixelFactor](float v) -> int {
-			return margin + v * pixelFactor;
-		};
+		auto toXPixels = [pixelFactor, W](float v) -> int { return margin + std::min(std::max(v, 0.0f), W) * pixelFactor;};
+		auto toYPixels = [pixelFactor, H](float v) -> int { return margin + std::min(std::max(v, 0.0f), H) * pixelFactor;};
 
 		g.setColour(Colours::white);
-		g.fillRect(margin, margin, static_cast<int>(paramW*pixelFactor), static_cast<int>(paramH*pixelFactor));
+		g.fillRect(margin, margin, static_cast<int>(W*pixelFactor), static_cast<int>(H*pixelFactor));
 
 		g.setFont(Font("Arial", 14, Font::FontStyleFlags::bold));
 		
@@ -65,7 +66,7 @@ namespace LTX{
             g.setColour(isRecording ? Colours::black : Colours::grey);
             PosVisualizerPlugin::PosPoint lastPoint = recordedPosPoints[0];
             for (PosVisualizerPlugin::PosPoint& point : recordedPosPoints) {
-                g.drawLine(toPixels(lastPoint.x), toPixels(lastPoint.y), toPixels(point.x), toPixels(point.y), 1);
+                g.drawLine(toXPixels(lastPoint.x), toYPixels(lastPoint.y), toXPixels(point.x), toYPixels(point.y), 1);
                 lastPoint = point;
             }
 		}
@@ -75,24 +76,24 @@ namespace LTX{
 
 		if (posSamp.numpix1 > 0) {
 			g.setColour(Colours::green);
-			g.fillEllipse(toPixels(posSamp.x1), toPixels(posSamp.y1), std::sqrt(posSamp.numpix1)+1, std::sqrt(posSamp.numpix1)+1);
-			g.drawSingleLineText("(" + String(posSamp.x1) + ", " + String(posSamp.y1) + ")", toPixels(0), toPixels(paramH)+16);
+			g.fillEllipse(toXPixels(posSamp.x1), toYPixels(posSamp.y1), std::sqrt(posSamp.numpix1)+1, std::sqrt(posSamp.numpix1)+1);
+			g.drawSingleLineText("(" + String(posSamp.x1) + ", " + String(posSamp.y1) + ")", toXPixels(0), toYPixels(H)+16);
 		}
 
 		if (posSamp.numpix2 > 0) {
 			g.setColour(Colours::red);
-			g.fillEllipse(toPixels(posSamp.x2), toPixels(posSamp.y2), std::sqrt(posSamp.numpix2)+1, std::sqrt(posSamp.numpix2)+1);
-			g.drawSingleLineText("(" + String(posSamp.x2) + ", " + String(posSamp.y2) + ")", toPixels(0), toPixels(paramH) +32);
+			g.fillEllipse(toXPixels(posSamp.x2), toYPixels(posSamp.y2), std::sqrt(posSamp.numpix2)+1, std::sqrt(posSamp.numpix2)+1);
+			g.drawSingleLineText("(" + String(posSamp.x2) + ", " + String(posSamp.y2) + ")", toXPixels(0), toYPixels(H) +32);
 		}
 
 		// render timestamp
 		if (isRecording) {
 			g.setColour(Colours::red);
-			g.fillEllipse(toPixels(paramW) - 10, toPixels(paramH) + 7, 10, 10);
-			g.drawSingleLineText(formatAsMinSecs(posSamp.timestamp, 1), toPixels(paramW)-16, toPixels(paramH) + 16, Justification::right);
+			g.fillEllipse(toXPixels(W) - 10, toYPixels(H) + 7, 10, 10);
+			g.drawSingleLineText(formatAsMinSecs(posSamp.timestamp, 1), toXPixels(W)-16, toYPixels(H) + 16, Justification::right);
 		} else {
 			g.setColour(Colours::white);
-			g.drawSingleLineText(formatAsMinSecs(posSamp.timestamp, 1), toPixels(paramW), toPixels(paramH) + 16, Justification::right);
+			g.drawSingleLineText(formatAsMinSecs(posSamp.timestamp, 1), toXPixels(W), toYPixels(H) + 16, Justification::right);
 		}
 	}
 
