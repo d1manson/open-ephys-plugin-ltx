@@ -75,13 +75,13 @@ namespace LTX{
 
 		if (posSamp.numpix1 > 0) {
 			g.setColour(Colours::green);
-			g.fillEllipse(toPixels(posSamp.x1), toPixels(posSamp.y1), posSamp.numpix1, posSamp.numpix1);
+			g.fillEllipse(toPixels(posSamp.x1), toPixels(posSamp.y1), std::sqrt(posSamp.numpix1)+1, std::sqrt(posSamp.numpix1)+1);
 			g.drawSingleLineText("(" + String(posSamp.x1) + ", " + String(posSamp.y1) + ")", toPixels(0), toPixels(paramH)+16);
 		}
 
 		if (posSamp.numpix2 > 0) {
 			g.setColour(Colours::red);
-			g.fillEllipse(toPixels(posSamp.x2), toPixels(posSamp.y2), posSamp.numpix2, posSamp.numpix2);
+			g.fillEllipse(toPixels(posSamp.x2), toPixels(posSamp.y2), std::sqrt(posSamp.numpix2)+1, std::sqrt(posSamp.numpix2)+1);
 			g.drawSingleLineText("(" + String(posSamp.x2) + ", " + String(posSamp.y2) + ")", toPixels(0), toPixels(paramH) +32);
 		}
 
