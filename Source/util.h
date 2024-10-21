@@ -1,4 +1,7 @@
 
+#ifndef LTX_UTIL_H_INCLUDED
+#define LTX_UTIL_H_INCLUDED
+
 #if defined(__GNUC__) || defined(__clang__)
 #define BSWAP16(x) __builtin_bswap16(x)
 #define BSWAP32(x) __builtin_bswap32(x)
@@ -15,7 +18,6 @@
                         ((x & 0x00FF0000) >> 8)  | \
                         ((x & 0xFF000000) >> 24))
 #endif
-
 
 /*
     Converts each element in the src float array to an int8 array by dividing by two and clamping to the int8 range.
@@ -64,3 +66,19 @@ inline void multiply(uint32 size, float* buffer, float factor) {
         buffer++;
     }
 }
+
+
+inline std::string formatFloat(float v, int precision) {
+    std::stringstream stream;
+    stream << std::fixed << std::setprecision(precision) << v;
+    return stream.str();
+}
+
+inline std::string formatAsMinSecs(float v, int precision) {
+    std::stringstream stream;
+    int mins = v / 60;
+    stream << mins << " min " << std::fixed << std::setprecision(precision) << (v-mins*60) << " s";
+    return stream.str();
+}
+
+#endif // LTX_UTIL_H_INCLUDED

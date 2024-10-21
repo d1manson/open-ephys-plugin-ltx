@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "LTXGainProcessorPluginEditor.h"
 #include "LTXGainProcessorPlugin.h"
+#include "util.h"
 
 namespace LTX {
 
@@ -29,9 +30,7 @@ namespace LTX {
     public:
         using Slider::Slider;
         String getTextFromValue(double value) override {
-            char buffer[10];
-            std::snprintf(buffer, sizeof(buffer), "%.*f", 2, value);
-            return std::string(buffer);
+            return formatFloat(value, 2);
         }
     };
 
