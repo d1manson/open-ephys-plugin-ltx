@@ -270,7 +270,7 @@ namespace LTX {
 
             if (writeChannel == posTimestampChannel) {
                 posSamplesBuffer.resize(size);
-                std::memset(posSamplesBuffer.data(), 0, size * sizeof(posSamplesBuffer));
+                std::memset(posSamplesBuffer.data(), 0, size * sizeof(PosSample));
                 posSampCount += size;
                 for (int i = 0; i < size; i++) {
                     posSamplesBuffer[i].timestamp = BSWAP32(
