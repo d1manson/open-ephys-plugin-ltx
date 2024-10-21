@@ -19,72 +19,36 @@ It produces:
 
 Note that you'll need three separate nodes in openephys, one to create set+tet file, one for eeg, and one for pos.
 
-**WARNING**: this does pretty much work, but the timestamp logic still needs to be ironed out, and there's currently no way to configure anything here.
+## The plugins here
+
+1. **LTX Record Engine**. This can write all the file types mentioned above. For a given record node in the signal chain, it will autodetect which mode it's in using the following logic:
+- if the record node has spikes enabled then it will write `.set` and `.1`, `.2`, ... files only. The voltage data in the spike channels should be in the range +- 250, and will be divided
+  by two to fit into a signed 8-bit integer. Use the gain plugin to configure this per channel, if required.
+- alternatively if the continuous stream it has access to is named `'bonsai'`, it will write `.pos` data. See the separate [bonsai plugin](https://github.com/d1manson/open-ephys-plugin-bonsai)
+  which allows you to bring position data from Bonsai into open ephys. That plugin is fairly generic, but here we require that you setup the bonsai plugin to recieve a timestamp and 6 float values.
+  Specifically the format is: `t,x1,y1,x2,y2,numpix1,numpix2`, where `t` is a double and the rest are singles. The 6 values will be converted to 16-bit ints without any multiplication, so to get
+  decent resolution it's worth having Bonsai provide numbers over a fairly large integer range (e.g. 0-1000 rather than 0-100).
+- otherwise it will write `.egf` data. As with the spike data, the voltage data here should be in the range +- 250, and will be divided by two to fit into a signed 8-bit integer.
+
+2. **Gain**. This is a simple processor "filter" plugin. It allows you to multiply the voltage on each channel by a value between -2 and 2. Probably you want to stay positive, but occasionally
+   it's useful to be able to flip the voltage. As noted above, the point of this plugin is to allow you to scale the output voltage range to fit into an 8-bit signed integer.
+
+3. **Pos Viewer** This expects the same kind of data as the pos mode record engine (described above). It displays the current (x1,y1) and (x2,y2) values with circles sized acording to `numpix1` and `numpix2`
+    respectively. When recording is on, it also shows the full path of `(x1,y1)` over the course of the recording. At the end of the recording the path stays until you either start a new recording or click
+   the 'clear path' button. This plugin lets you configure the window dimensions, and [NOT IMPLEMENTED YET] these values are actually read by the record engine and stored in the `.pos` file header (this is
+   a bit counter intuitive becuase it looks like this plugin is a passive view-only node, but it is actually providing this little bit of metadta to the record engine.
 
 
-----
-
-Template readme...
+We do provide here a sample Open Ephys config file here, `./oe_sample_config` (though it may be a bit out of data compared to later revisions outside of source control).
 
 
-# Record Engine Plugin Template
+## Development
 
-This repository contains a template for building **Record Engine** plugins for the [Open Ephys GUI](https://github.com/open-ephys/plugin-GUI). Record Engine plugins allow the GUI's Record Node to write data into a new format. By default, the GUI ships with Record Engines for the Binary and Open Ephys formats.
+See the [Open Ephys Plugin API docs](https://open-ephys.github.io/gui-docs/Developer-Guide/Open-Ephys-Plugin-API/index.html) for info on how to develop a plugin
+including links to the template repos. It's also worth looking at the source code for other plugins and the plugin-gui repo itself. A lot of what's been done here was
+inspired by existing code.
 
-Information on the Open Ephys Plugin API can be found on [the GUI's documentation site](https://open-ephys.github.io/gui-docs/Developer-Guide/Open-Ephys-Plugin-API.html).
+As shown in `Source/OpenEphysLib` we have a few different kinds of plugin in this repo, so make sure to read all the relevant docs.
 
-## Creating a new Record Engine Plugin
 
-1. Click "Use this template" to instantiate a new repository under your GitHub account. 
-2. Clone the new repository into a directory at the same level as the `plugin-GUI` repository. This is typically named `OEPlugins`, but it can have any name you'd like.
-3. Modify the [OpenEphysLib.cpp file](https://open-ephys.github.io/gui-docs/Developer-Guide/Creating-a-new-plugin.html) to include your plugin's name and version number.
-4. Create the plugin [build files](https://open-ephys.github.io/gui-docs/Developer-Guide/Compiling-plugins.html) using CMake.
-5. Use Visual Studio (Windows), Xcode (macOS), or `make` (Linux) to compile the plugin.
-6. Edit the code to add custom functionality, and add additional source files as needed.
 
-## Repository structure
-
-This repository contains 3 top-level directories:
-
-- `Build` - Plugin build files will be auto-generated here. These files will be ignored in all `git` commits.
-- `Source` - All plugin source files (`.h` and `.cpp`) should live here. There can be as many source code sub-directories as needed.
-- `Resources` - This is where you should store any non-source-code files, such as library files or scripts.
-
-## Using external libraries
-
-To link the plugin to external libraries, it is necessary to manually edit the Build/CMakeLists.txt file. The code for linking libraries is located in comments at the end.
-For most common libraries, the `find_package` option is recommended. An example would be
-
-```cmake
-find_package(ZLIB)
-target_link_libraries(${PLUGIN_NAME} ${ZLIB_LIBRARIES})
-target_include_directories(${PLUGIN_NAME} PRIVATE ${ZLIB_INCLUDE_DIRS})
-```
-
-If there is no standard package finder for cmake, `find_library`and `find_path` can be used to find the library and include files respectively. The commands will search in a variety of standard locations For example
-
-```cmake
-find_library(ZMQ_LIBRARIES NAMES libzmq-v120-mt-4_0_4 zmq zmq-v120-mt-4_0_4) #the different names after names are not a list of libraries to include, but a list of possible names the library might have, useful for multiple architectures. find_library will return the first library found that matches any of the names
-find_path(ZMQ_INCLUDE_DIRS zmq.h)
-
-target_link_libraries(${PLUGIN_NAME} ${ZMQ_LIBRARIES})
-target_include_directories(${PLUGIN_NAME} PRIVATE ${ZMQ_INCLUDE_DIRS})
-```
-
-### Providing libraries for Windows
-
-Since Windows does not have standardized paths for libraries, as Linux and macOS do, it is sometimes useful to pack the appropriate Windows version of the required libraries alongside the plugin.
-To do so, a _libs_ directory has to be created **at the top level** of the repository, alongside this README file, and files from all required libraries placed there. The required folder structure is:
-
-```
-    libs
-    ├─ include           #library headers
-    ├─ lib
-        ├─ x64           #64-bit compile-time (.lib) files
-        └─ x86           #32-bit compile time (.lib) files, if needed
-    └─ bin
-        ├─ x64           #64-bit runtime (.dll) files
-        └─ x86           #32-bit runtime (.dll) files, if needed
-```
-
-DLLs in the bin directories will be copied to the open-ephys GUI _shared_ folder when installing.
