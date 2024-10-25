@@ -52,6 +52,8 @@ private:
 	/** Pointer to the processor class */
 	PosVisualizerPlugin* processor;
 
+    std::vector<PosVisualizerPlugin::PosPoint> recordedPosPoints;
+
 	/** Generates an assertion if this class leaks */
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PosPlot);
 	IntParameter* paramWidth;

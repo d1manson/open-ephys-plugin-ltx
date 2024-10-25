@@ -44,10 +44,9 @@ namespace LTX{
 		float H = static_cast<float>(paramHeight->getValue());
 		float ppm = paramPPM->getValue();
 
-        bool isRecording = processor->getIsRecording();
-		std::vector<PosVisualizerPlugin::PosPoint> recordedPosPoints = processor->getRecordedPosPoints();
-        PosVisualizerPlugin::PosSample posSamp = processor->getLatestPosSamp();
-
+        PosVisualizerPlugin::PosSample posSamp;
+        bool isRecording;
+        processor->consumeRecentData(posSamp, recordedPosPoints, isRecording){
 
 		const float pixelFactor = std::min(
 			(getWidth() - margin * 2) / static_cast<float>(W),
