@@ -72,6 +72,10 @@ namespace LTX{
             Path path;
             path.startNewSubPath(toXPixels(recordedPosPoints[0].x), toYPixels(recordedPosPoints[0].y)); // first point gets duplicated, but not a problem
             for (PosVisualizerPlugin::PosPoint& point : recordedPosPoints) {
+                // TODO(Optimisation): do the clamp in the Plugin.cpp so that by the time we call consumeRecentData, it's already clamped.
+                //                     This is valid if W/H cannot change during recording (can change during acquisition but that's not relevant).
+                //                     Could actually store the data in a path in consumeRecentData and then copy and applyTransform here based on
+                //                     pixelFactor and margin (well margin you could pre-add, but that's messy).
                 path.lineTo(toXPixels(point.x), toYPixels(point.y));
             }
             g.setColour(isRecording ? Colours::black : Colours::grey);
