@@ -69,12 +69,13 @@ namespace LTX{
 
         if(recordedPosPoints.size()){
             // we always render the recordedPosPoints (if there are any), just in a different shade when recording is not currently active
-            g.setColour(isRecording ? Colours::black : Colours::grey);
-            PosVisualizerPlugin::PosPoint lastPoint = recordedPosPoints[0];
+            Path path;
+            path.startNewSubPath(toXPixels(recordedPosPoints[0].x), toYPixels(recordedPosPoints[0].y)); // first point gets duplicated, but not a problem
             for (PosVisualizerPlugin::PosPoint& point : recordedPosPoints) {
-                g.drawLine(toXPixels(lastPoint.x), toYPixels(lastPoint.y), toXPixels(point.x), toYPixels(point.y), 1);
-                lastPoint = point;
+                path.lineTo(toXPixels(point.x), toYPixels(point.y));
             }
+            g.setColour(isRecording ? Colours::black : Colours::grey);
+            g.strokePath(path, PathStrokeType(1.0f));
 		}
 
 
