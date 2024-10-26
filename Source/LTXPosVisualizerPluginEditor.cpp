@@ -53,7 +53,8 @@ PosVisualizerPluginEditor::PosVisualizerPluginEditor(GenericProcessor* p)
 }
 
 void PosVisualizerPluginEditor::timerCallback() {
-    PosVisualizerPlugin::PosSample posSamp = reinterpret_cast<PosVisualizerPlugin*>(getProcessor())->getLatestPosSamp();
+    PosVisualizerPlugin::PosSample posSamp;
+    reinterpret_cast<PosVisualizerPlugin*>(getProcessor())->consumeRecentData(posSamp);
 
     if (posSamp.timestamp == 0) {
         infoText->setText("t,x1,y1,x2,y2,numpix1,numpix2", dontSendNotification);

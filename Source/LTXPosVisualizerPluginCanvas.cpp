@@ -46,7 +46,7 @@ namespace LTX{
 
         PosVisualizerPlugin::PosSample posSamp;
         bool isRecording;
-        processor->consumeRecentData(posSamp, recordedPosPoints, isRecording){
+        processor->consumeRecentData(posSamp, recordedPosPoints, isRecording);
 
 		const float pixelFactor = std::min(
 			(getWidth() - margin * 2) / static_cast<float>(W),
@@ -71,7 +71,7 @@ namespace LTX{
             // we always render the recordedPosPoints (if there are any), just in a different shade when recording is not currently active
             Path path;
             path.startNewSubPath(toXPixels(recordedPosPoints[0].x), toYPixels(recordedPosPoints[0].y)); // first point gets duplicated, but not a problem
-            for (PosVisualizerPlugin::PosPoint& point : recordedPosPoints) {
+            for (PosPoint& point : recordedPosPoints) {
                 // TODO(Optimisation): do the clamp in the Plugin.cpp so that by the time we call consumeRecentData, it's already clamped.
                 //                     This is valid if W/H cannot change during recording (can change during acquisition but that's not relevant).
                 //                     Could actually store the data in a path in consumeRecentData and then copy and applyTransform here based on

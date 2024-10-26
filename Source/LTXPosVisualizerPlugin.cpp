@@ -68,7 +68,12 @@ void PosVisualizerPlugin::stopRecording() {
     isRecording = false;
 }
 
-void consumeRecentData(PosSample& latestPosSamp_, std::vector<PosPoint>& posPoints_, bool& isRecording_){
+void PosVisualizerPlugin::consumeRecentData(PosSample& latestPosSamp_){
+    const ScopedLock sl(lock);
+    latestPosSamp_ = latestPosSamp;
+}
+
+void PosVisualizerPlugin::consumeRecentData(PosSample& latestPosSamp_, std::vector<PosPoint>& posPoints_, bool& isRecording_){
     const ScopedLock sl(lock);
     isRecording_ = isRecording;
     latestPosSamp_ = latestPosSamp;
@@ -118,7 +123,7 @@ void PosVisualizerPlugin::process(AudioBuffer<float>& buffer)
                    }
                 }
                 // we don't check numpix1, instead we assume x1 will be nan already if numpix1 is 0
-                recordedPosPoints.erase(
+                posPointsBuffer.erase(
                     std::remove_if(posPointsBuffer.begin() + originalSize, posPointsBuffer.end(),
                         [](const PosPoint& samp) { return std::isnan(samp.x); }),
                         posPointsBuffer.end());

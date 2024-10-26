@@ -28,6 +28,12 @@
 #include <ProcessorHeaders.h>
 
 namespace LTX {
+
+struct PosPoint {
+    float x;
+    float y;
+};
+
 /** 
 	A plugin that includes a canvas for displaying incoming data
 	or an extended settings interface.
@@ -59,10 +65,7 @@ public:
 		float numpix2;
 	};
 
-    struct PosPoint {
-        float x;
-        float y;
-    };
+
 
 	/** The class constructor, used to initialize any members.*/
 	PosVisualizerPlugin();
@@ -115,7 +118,8 @@ public:
 
     /* For use by the LTXPosVisualiserPluginCanvas to communicate data across threads. */
     void consumeRecentData(PosSample& latestPosSamp_, std::vector<PosPoint>& posPoints, bool& isRecording_);
-
+    /* For use by the LTXPosVisualiserPluginEditor to communicate data across threads. */
+    void consumeRecentData(PosSample& latestPosSamp_);
 
 private:
 
