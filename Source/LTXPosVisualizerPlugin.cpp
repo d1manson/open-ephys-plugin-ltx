@@ -53,14 +53,14 @@ AudioProcessorEditor* PosVisualizerPlugin::createEditor()
 void PosVisualizerPlugin::updateSettings()
 {
 
-
 }
 
 
 void PosVisualizerPlugin::startRecording() {
     const ScopedLock sl(lock);
     isRecording = true;
-    recordedPosPoints.clear();
+    clearRequired = true;
+    posPointsBuffer.clear();
 }
 
 void PosVisualizerPlugin::stopRecording() {
@@ -68,25 +68,31 @@ void PosVisualizerPlugin::stopRecording() {
     isRecording = false;
 }
 
-bool PosVisualizerPlugin::getIsRecording() {
+void PosVisualizerPlugin::consumeRecentData(PosSample& latestPosSamp_){
     const ScopedLock sl(lock);
-    return isRecording; 
-};
-
-PosVisualizerPlugin::PosSample PosVisualizerPlugin::getLatestPosSamp() {
-    const ScopedLock sl(lock);
-    return latestPosSamp;
+    latestPosSamp_ = latestPosSamp;
 }
 
-std::vector<PosVisualizerPlugin::PosPoint> PosVisualizerPlugin::getRecordedPosPoints() {
+void PosVisualizerPlugin::consumeRecentData(PosSample& latestPosSamp_, std::vector<PosPoint>& posPoints_, bool& isRecording_){
     const ScopedLock sl(lock);
-    return recordedPosPoints;
+    isRecording_ = isRecording;
+    latestPosSamp_ = latestPosSamp;
+    if(clearRequired){
+        posPoints_.clear();
+        clearRequired = false;
+    }
+    for(auto& point : posPointsBuffer){
+        posPoints_.push_back(point);
+    }
+    posPointsBuffer.clear();
 }
+
 
 void PosVisualizerPlugin::clearRecording() {
     const ScopedLock sl(lock);
     if (!isRecording) {
-        recordedPosPoints.clear();
+        clearRequired = true;
+        posPointsBuffer.clear();
     }
 }
 
@@ -102,26 +108,28 @@ void PosVisualizerPlugin::process(AudioBuffer<float>& buffer)
         }
 
         if (isRecording) {
-            // store x1 and y1 values into recordedPosPoints for all samples
-            int originalSize = recordedPosPoints.size();
-            recordedPosPoints.resize(originalSize + numSamples);
+            // store x1 and y1 values into posPointsBuffer
+            int originalSize = posPointsBuffer.size();
+            posPointsBuffer.resize(originalSize + numSamples);
             for (auto chan : stream->getContinuousChannels()) {
                 int chanIndex = chan->getGlobalIndex();
                 if(chanIndex == ChannelMapping::x1) {
                     for (int i = 0; i < numSamples; i++) {
-                        recordedPosPoints[originalSize + i].x = buffer.getReadPointer(chanIndex)[i];
+                        posPointsBuffer[originalSize + i].x = buffer.getReadPointer(chanIndex)[i];
                     }
                 } else if (chanIndex == ChannelMapping::y1) {
                     for (int i = 0; i < numSamples; i++) {
-                        recordedPosPoints[originalSize + i].y = buffer.getReadPointer(chanIndex)[i];
+                        posPointsBuffer[originalSize + i].y = buffer.getReadPointer(chanIndex)[i];
                    }
+
+
                 }
-                // we don't check numpix1, instead we assume x1 will be nan already if numpix1 is 0
-                recordedPosPoints.erase(
-                    std::remove_if(recordedPosPoints.begin() + originalSize, recordedPosPoints.end(),
-                        [](const PosPoint& samp) { return std::isnan(samp.x); }),
-                        recordedPosPoints.end());
             }
+             // we don't check numpix1, instead we assume x1 will be nan already if numpix1 is 0
+            posPointsBuffer.erase(
+                std::remove_if(posPointsBuffer.begin() + originalSize, posPointsBuffer.end(),
+                    [](const PosPoint& samp) { return std::isnan(samp.x); }),
+                    posPointsBuffer.end());
         }
 
         // get the last value into latestPosSamp

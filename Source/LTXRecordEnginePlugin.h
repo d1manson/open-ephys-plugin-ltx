@@ -53,30 +53,30 @@ namespace LTX {
         String getEngineId() const override { return "LTX"; }
 
         /** Called when recording starts to open all needed files */
-        void openFiles(File rootFolder, int experimentNumber, int recordingNumber);
+        void openFiles(File rootFolder, int experimentNumber, int recordingNumber) override;
 
         /** Called when recording stops to close all files and do all the necessary cleanup */
-        void closeFiles();
+        void closeFiles() override;
 
         /** Write continuous data for a channel, including synchronized float timestamps for each sample */
         void writeContinuousData(int writeChannel,
                                    int realChannel,
                                    const float* dataBuffer,
                                    const double* ftsBuffer,
-                                   int size);
+                                   int size) override;
 
         /** Write a single event to disk (TTL or TEXT) */
         void writeEvent(int eventChannel,
-                        const EventPacket& event);
+                        const EventPacket& event) override;
 
         /** Write a spike to disk */
-        void writeSpike(int electrodeIndex, const Spike* spike);
+        void writeSpike(int electrodeIndex, const Spike* spike) override;
 
         /** Write the timestamp sync text messages to disk*/
         void writeTimestampSyncText(uint64 streamId,
                                     int64 sampleNum,
                                     float sourceSampleRate,
-                                    String text);
+                                    String text) override;
 
 
         

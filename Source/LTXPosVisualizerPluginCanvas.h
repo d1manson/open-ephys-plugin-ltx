@@ -26,8 +26,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <VisualizerWindowHeaders.h>
 
+
 namespace LTX{
 class PosVisualizerPlugin;
+class PosPoint;
 
 /**
 * 
@@ -35,6 +37,7 @@ class PosVisualizerPlugin;
 	and then we can call repaint() on this from within the Visualiser's paint() method.
 	Otherwise we could have just had one class here.
 */
+
 
 class PosPlot : public Component {
 public:
@@ -51,6 +54,8 @@ private:
 
 	/** Pointer to the processor class */
 	PosVisualizerPlugin* processor;
+
+    std::vector<PosPoint> recordedPosPoints;
 
 	/** Generates an assertion if this class leaks */
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PosPlot);

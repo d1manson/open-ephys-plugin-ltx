@@ -44,10 +44,9 @@ namespace LTX{
 		float H = static_cast<float>(paramHeight->getValue());
 		float ppm = paramPPM->getValue();
 
-        bool isRecording = processor->getIsRecording();
-		std::vector<PosVisualizerPlugin::PosPoint> recordedPosPoints = processor->getRecordedPosPoints();
-        PosVisualizerPlugin::PosSample posSamp = processor->getLatestPosSamp();
-
+        PosVisualizerPlugin::PosSample posSamp;
+        bool isRecording;
+        processor->consumeRecentData(posSamp, recordedPosPoints, isRecording);
 
 		const float pixelFactor = std::min(
 			(getWidth() - margin * 2) / static_cast<float>(W),
@@ -70,12 +69,17 @@ namespace LTX{
 
         if(recordedPosPoints.size()){
             // we always render the recordedPosPoints (if there are any), just in a different shade when recording is not currently active
-            g.setColour(isRecording ? Colours::black : Colours::grey);
-            PosVisualizerPlugin::PosPoint lastPoint = recordedPosPoints[0];
-            for (PosVisualizerPlugin::PosPoint& point : recordedPosPoints) {
-                g.drawLine(toXPixels(lastPoint.x), toYPixels(lastPoint.y), toXPixels(point.x), toYPixels(point.y), 1);
-                lastPoint = point;
+            Path path;
+            path.startNewSubPath(toXPixels(recordedPosPoints[0].x), toYPixels(recordedPosPoints[0].y)); // first point gets duplicated, but not a problem
+            for (PosPoint& point : recordedPosPoints) {
+                // TODO(Optimisation): do the clamp in the Plugin.cpp so that by the time we call consumeRecentData, it's already clamped.
+                //                     This is valid if W/H cannot change during recording (can change during acquisition but that's not relevant).
+                //                     Could actually store the data in a path in consumeRecentData and then copy and applyTransform here based on
+                //                     pixelFactor and margin (well margin you could pre-add, but that's messy).
+                path.lineTo(toXPixels(point.x), toYPixels(point.y));
             }
+            g.setColour(isRecording ? Colours::black : Colours::grey);
+            g.strokePath(path, PathStrokeType(1.0f));
 		}
 
 

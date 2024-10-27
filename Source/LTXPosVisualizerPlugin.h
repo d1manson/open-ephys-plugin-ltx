@@ -28,6 +28,12 @@
 #include <ProcessorHeaders.h>
 
 namespace LTX {
+
+struct PosPoint {
+    float x;
+    float y;
+};
+
 /** 
 	A plugin that includes a canvas for displaying incoming data
 	or an extended settings interface.
@@ -59,10 +65,7 @@ public:
 		float numpix2;
 	};
 
-    struct PosPoint {
-        float x;
-        float y;
-    };
+
 
 	/** The class constructor, used to initialize any members.*/
 	PosVisualizerPlugin();
@@ -109,26 +112,25 @@ public:
 	void startRecording() override;
 	void stopRecording() override;
 
-	bool getIsRecording();
-
-	// external access to the latestPosSamp and recordedPosPoints is via a lock-and-copy operation
-	// which is a simple way to avoid crashes due to concurrent access to memory, especially the std::vector.
-
-	PosSample getLatestPosSamp();
-
-	/* Returns a copy of the recordedPosPoints vector. Any nan data points have been pre-filtered out. */
-	std::vector<PosPoint> getRecordedPosPoints();
-
 	/* If recording is no long active it is possible to wipe the recording from the visualisation */
 	void clearRecording();
 
+
+    /* For use by the LTXPosVisualiserPluginCanvas to communicate data across threads. */
+    void consumeRecentData(PosSample& latestPosSamp_, std::vector<PosPoint>& posPoints, bool& isRecording_);
+    /* For use by the LTXPosVisualiserPluginEditor to communicate data across threads. */
+    void consumeRecentData(PosSample& latestPosSamp_);
+
 private:
 
-	PosSample latestPosSamp = {};
-	std::vector<PosPoint> recordedPosPoints;
-	bool isRecording = false;
-
+    /* The following bits are collected up on the hot-path signal processing thread and can then be communicated
+     * to the GUI thread via the consumeRecentData method. The lock is used for simple thread-safety. */
 	CriticalSection lock;
+	PosSample latestPosSamp = {};
+	std::vector<PosPoint> posPointsBuffer;
+	bool isRecording = false;
+	bool clearRequired = false;
+
 
 	/** Generates an assertion if this class leaks */
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PosVisualizerPlugin);
