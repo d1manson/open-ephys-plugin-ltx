@@ -274,11 +274,13 @@ namespace LTX {
                 posSampCount += size;
                 for (int i = 0; i < size; i++) {
                     posSamplesBuffer[i].timestamp = BSWAP32(
-                        static_cast<int32_t>((dataBuffer[i] - posFirstTimestamp) * timestampTimebase));
+                        std::isnan(dataBuffer[i]) ? 0 : static_cast<int32_t>((dataBuffer[i] - posFirstTimestamp) * timestampTimebase));
                 }
             } else {
                 for (int i = 0; i < size; i++) {
-                    posSamplesBuffer[i].xy_etc[writeChannel - 1] = BSWAP16(static_cast<uint16_t>(dataBuffer[i]));
+                    posSamplesBuffer[i].xy_etc[writeChannel - 1] = BSWAP16(
+                        std::isnan(dataBuffer[i]) ? 0 : static_cast<uint16_t>(dataBuffer[i])
+                    );
                 }
 
                 if (writeChannel == requiredPosChans - 1) {
