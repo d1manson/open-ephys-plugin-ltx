@@ -39,6 +39,9 @@ Note that you'll need three separate nodes in openephys, one to create set+tet f
    a bit counter intuitive becuase it looks like this plugin is a passive view-only node, but it is actually providing this little bit of metadta to the record engine.
 
 
+   <img width="765" alt="Screenshot 2024-10-27 at 17 38 08" src="https://github.com/user-attachments/assets/f79dc117-d9a4-42d6-9ac8-338a34207a7c">
+
+
 We do provide here a sample Open Ephys config file here, `./oe_sample_config` (though it may be a bit out of data compared to later revisions outside of source control).
 
 
