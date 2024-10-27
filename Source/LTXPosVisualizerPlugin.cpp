@@ -121,13 +121,15 @@ void PosVisualizerPlugin::process(AudioBuffer<float>& buffer)
                     for (int i = 0; i < numSamples; i++) {
                         posPointsBuffer[originalSize + i].y = buffer.getReadPointer(chanIndex)[i];
                    }
+
+
                 }
-                // we don't check numpix1, instead we assume x1 will be nan already if numpix1 is 0
-                posPointsBuffer.erase(
-                    std::remove_if(posPointsBuffer.begin() + originalSize, posPointsBuffer.end(),
-                        [](const PosPoint& samp) { return std::isnan(samp.x); }),
-                        posPointsBuffer.end());
             }
+             // we don't check numpix1, instead we assume x1 will be nan already if numpix1 is 0
+            posPointsBuffer.erase(
+                std::remove_if(posPointsBuffer.begin() + originalSize, posPointsBuffer.end(),
+                    [](const PosPoint& samp) { return std::isnan(samp.x); }),
+                    posPointsBuffer.end());
         }
 
         // get the last value into latestPosSamp
