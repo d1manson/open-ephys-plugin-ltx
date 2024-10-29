@@ -60,9 +60,8 @@ namespace LTX {
             for (auto chan : stream->getContinuousChannels())
             {
                 int chanIndex = chan->getGlobalIndex();
-                multiply(numSamples,
-                    buffer.getWritePointer(chanIndex),
-                    gain_params_for_stream[chanIndex]->getValue());
+                FloatVectorOperations::multiply(buffer.getWritePointer(chanIndex),
+                    gain_params_for_stream[chanIndex]->getValue(), numSamples);
             }
         }
     }

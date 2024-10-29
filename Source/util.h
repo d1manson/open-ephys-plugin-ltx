@@ -56,18 +56,6 @@ inline int64 float32sToInt8sDownsampled(const float* src, int8* dest, int size) 
     return out;
 }
 
-/*
-    Multiplies each float in the array by the given factor, making the change in place.
-*/
-inline void multiply(uint32 size, float* buffer, float factor) {
-    // TODO(Optimisation): can we do better here using SIMD?
-    // maybe switch to using  Juce's FloatVectorOperations::multiply, which looks like it might try using SIMD when there is alignment
-    for (; size; size--) {
-        buffer[0] *= factor;
-        buffer++;
-    }
-}
-
 
 inline std::string formatFloat(float v, int precision) {
     std::stringstream stream;
