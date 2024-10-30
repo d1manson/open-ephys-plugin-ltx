@@ -31,8 +31,6 @@ namespace LTX {
 PosVisualizerPluginEditor::PosVisualizerPluginEditor(GenericProcessor* p)
     : VisualizerEditor(p, "Pos", 190)
 {
-    // todo: show inline latest pos
-    
     addTextBoxParameterEditor("Width", 10, 25);
     addTextBoxParameterEditor("Height", 100, 25);
     addTextBoxParameterEditor("PPM", 10, 65);
@@ -42,27 +40,6 @@ PosVisualizerPluginEditor::PosVisualizerPluginEditor(GenericProcessor* p)
     clearButton->addListener(this);
     clearButton->setTooltip("Can only clear display after recording has been stopped.");
     addAndMakeVisible(clearButton.get()); // makes the button a child component of the editor and makes it visible
-    
-    infoText = std::make_unique<Label>("info text");
-    infoText->setFont(Font(12));
-    infoText->setBounds(10, 108, 180, 20);
-    infoText->setColour(Label::textColourId, Colours::black);
-    addAndMakeVisible(infoText.get());
-
-    startTimer(50);
-}
-
-void PosVisualizerPluginEditor::timerCallback() {
-    PosVisualizerPlugin::PosSample posSamp;
-    reinterpret_cast<PosVisualizerPlugin*>(getProcessor())->consumeRecentData(posSamp);
-
-    if (posSamp.timestamp == 0) {
-        infoText->setText("t,x1,y1,x2,y2,numpix1,numpix2", dontSendNotification);
-    } else {
-        infoText->setText(
-            String(formatAsMinSecs(posSamp.timestamp, 1)) + " (" + String(posSamp.x1) + ", " + String(posSamp.y1) + ")",
-            dontSendNotification);
-    }
 }
 
 Visualizer* PosVisualizerPluginEditor::createNewCanvas()

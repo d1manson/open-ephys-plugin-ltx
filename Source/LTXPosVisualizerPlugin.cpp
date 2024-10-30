@@ -70,11 +70,6 @@ void PosVisualizerPlugin::stopRecording() {
     isRecording = false;
 }
 
-void PosVisualizerPlugin::consumeRecentData(PosSample& latestPosSamp_){
-    const ScopedLock sl(lock);
-    latestPosSamp_ = latestPosSamp;
-}
-
 void PosVisualizerPlugin::consumeRecentData(PosSample& latestPosSamp_, Path& path, bool& isRecording_){
     const ScopedLock sl(lock);
     isRecording_ = isRecording;

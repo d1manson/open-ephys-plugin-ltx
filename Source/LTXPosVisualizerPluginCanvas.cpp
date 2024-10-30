@@ -73,24 +73,25 @@ namespace LTX{
         if(!path.isEmpty()){
             // we always render the path (if there is any), just in a different shade when recording is not currently active
             AffineTransform transform = AffineTransform::scale(pixelFactor).translated(margin, margin);
-            Path transformedPath = Path(path);
-            transformedPath.applyTransform(transform);
+            Path transformedPath = Path();
+            transformedPath.addPath(path, transform);
             g.setColour(isRecording ? Colours::black : Colours::grey);
             g.strokePath(transformedPath, PathStrokeType(1.0f));
 		}
+
 
 		// render latest pos samp as two blobs
 
 		if (posSamp.numpix1 > 0) {
 			g.setColour(Colours::green);
 			g.fillEllipse(toXPixels(posSamp.x1), toYPixels(posSamp.y1), std::sqrt(posSamp.numpix1)+1, std::sqrt(posSamp.numpix1)+1);
-			g.drawSingleLineText("(" + String(posSamp.x1) + ", " + String(posSamp.y1) + ")", toXPixels(0), toYPixels(H)+16);
+			g.drawSingleLineText("(" + formatFloat(posSamp.x1, 1) + ", " + formatFloat(posSamp.y1, 1) + ")", toXPixels(0), toYPixels(H)+16);
 		}
 
 		if (posSamp.numpix2 > 0) {
 			g.setColour(Colours::red);
 			g.fillEllipse(toXPixels(posSamp.x2), toYPixels(posSamp.y2), std::sqrt(posSamp.numpix2)+1, std::sqrt(posSamp.numpix2)+1);
-			g.drawSingleLineText("(" + String(posSamp.x2) + ", " + String(posSamp.y2) + ")", toXPixels(0), toYPixels(H) +32);
+			g.drawSingleLineText("(" + formatFloat(posSamp.x2, 1) + ", " + formatFloat(posSamp.y2, 1) + ")", toXPixels(0), toYPixels(H) +32);
 		}
 
 		// render timestamp

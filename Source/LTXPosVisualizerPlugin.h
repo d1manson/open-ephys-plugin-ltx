@@ -119,8 +119,6 @@ public:
 
     /* For use by the LTXPosVisualiserPluginCanvas to communicate data across threads. */
     void consumeRecentData(PosSample& latestPosSamp_, Path& path, bool& isRecording_);
-    /* For use by the LTXPosVisualiserPluginEditor to communicate data across threads. */
-    void consumeRecentData(PosSample& latestPosSamp_);
 
 private:
 
