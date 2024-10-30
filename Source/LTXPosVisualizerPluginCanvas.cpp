@@ -24,6 +24,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "LTXPosVisualizerPluginCanvas.h"
 #include "LTXPosVisualizerPlugin.h"
 #include "util.h"
+#include <chrono>
+#include <atomic>
 
 namespace LTX{
 
@@ -37,24 +39,25 @@ namespace LTX{
 	}
 
 	PosPlot::~PosPlot(){}
-	
+
 	void PosPlot::paint(Graphics& g)
 	{
+
 		float W = static_cast<float>(paramWidth->getValue());
 		float H = static_cast<float>(paramHeight->getValue());
 		float ppm = paramPPM->getValue();
 
         PosVisualizerPlugin::PosSample posSamp;
         bool isRecording;
-        processor->consumeRecentData(posSamp, recordedPosPoints, isRecording);
+        processor->consumeRecentData(posSamp, path, isRecording);
 
 		const float pixelFactor = std::min(
 			(getWidth() - margin * 2) / static_cast<float>(W),
 			(getHeight() - margin * 2) / static_cast<float>(H)
 		);
 
-		auto toXPixels = [pixelFactor, W](float v) -> int { return margin + std::min(std::max(v, 0.0f), W) * pixelFactor;};
-		auto toYPixels = [pixelFactor, H](float v) -> int { return margin + std::min(std::max(v, 0.0f), H) * pixelFactor;};
+		auto toXPixels = [pixelFactor](float v) -> int { return margin + v * pixelFactor;};
+		auto toYPixels = [pixelFactor](float v) -> int { return margin + v * pixelFactor;};
 
 		g.setColour(Colours::white);
 		g.fillRect(margin, margin, static_cast<int>(W*pixelFactor), static_cast<int>(H*pixelFactor));
@@ -67,21 +70,14 @@ namespace LTX{
 		g.drawSingleLineText("< " + formatFloat(H * 100 / ppm, 0) + "cm >", toXPixels(0) - 6, toYPixels(H / 2), Justification::centred);
 		g.restoreState();
 
-        if(recordedPosPoints.size()){
-            // we always render the recordedPosPoints (if there are any), just in a different shade when recording is not currently active
-            Path path;
-            path.startNewSubPath(toXPixels(recordedPosPoints[0].x), toYPixels(recordedPosPoints[0].y)); // first point gets duplicated, but not a problem
-            for (PosPoint& point : recordedPosPoints) {
-                // TODO(Optimisation): do the clamp in the Plugin.cpp so that by the time we call consumeRecentData, it's already clamped.
-                //                     This is valid if W/H cannot change during recording (can change during acquisition but that's not relevant).
-                //                     Could actually store the data in a path in consumeRecentData and then copy and applyTransform here based on
-                //                     pixelFactor and margin (well margin you could pre-add, but that's messy).
-                path.lineTo(toXPixels(point.x), toYPixels(point.y));
-            }
+        if(!path.isEmpty()){
+            // we always render the path (if there is any), just in a different shade when recording is not currently active
+            AffineTransform transform = AffineTransform::scale(pixelFactor).translated(margin, margin);
+            Path transformedPath = Path(path);
+            transformedPath.applyTransform(transform);
             g.setColour(isRecording ? Colours::black : Colours::grey);
-            g.strokePath(path, PathStrokeType(1.0f));
+            g.strokePath(transformedPath, PathStrokeType(1.0f));
 		}
-
 
 		// render latest pos samp as two blobs
 
@@ -106,6 +102,11 @@ namespace LTX{
 			g.setColour(Colours::white);
 			g.drawSingleLineText(formatAsMinSecs(posSamp.timestamp, 1), toXPixels(W), toYPixels(H) + 16, Justification::right);
 		}
+
+
+
+
+
 	}
 
 

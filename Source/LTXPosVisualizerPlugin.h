@@ -26,6 +26,7 @@
 #define VISUALIZERPLUGIN_H_DEFINED
 
 #include <ProcessorHeaders.h>
+#include <VisualizerWindowHeaders.h>
 
 namespace LTX {
 
@@ -117,7 +118,7 @@ public:
 
 
     /* For use by the LTXPosVisualiserPluginCanvas to communicate data across threads. */
-    void consumeRecentData(PosSample& latestPosSamp_, std::vector<PosPoint>& posPoints, bool& isRecording_);
+    void consumeRecentData(PosSample& latestPosSamp_, Path& path, bool& isRecording_);
     /* For use by the LTXPosVisualiserPluginEditor to communicate data across threads. */
     void consumeRecentData(PosSample& latestPosSamp_);
 
@@ -130,7 +131,8 @@ private:
 	std::vector<PosPoint> posPointsBuffer;
 	bool isRecording = false;
 	bool clearRequired = false;
-
+    IntParameter* paramWidth;
+    IntParameter* paramHeight;
 
 	/** Generates an assertion if this class leaks */
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PosVisualizerPlugin);

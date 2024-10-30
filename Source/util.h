@@ -70,4 +70,8 @@ inline std::string formatAsMinSecs(float v, int precision) {
     return stream.str();
 }
 
+inline float clamp(float v, float min, float max) {
+    return std::isnan(v) ? v : std::min(std::max(v, min), max);
+}
+
 #endif // LTX_UTIL_H_INCLUDED

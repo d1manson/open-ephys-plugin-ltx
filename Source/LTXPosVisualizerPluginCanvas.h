@@ -47,7 +47,6 @@ public:
 	/** Destructor */
 	~PosPlot();
 
-
 	void paint(Graphics& g) override;
 
 private:
@@ -55,13 +54,14 @@ private:
 	/** Pointer to the processor class */
 	PosVisualizerPlugin* processor;
 
-    std::vector<PosPoint> recordedPosPoints;
-
-	/** Generates an assertion if this class leaks */
-	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PosPlot);
+    Path path;
 	IntParameter* paramWidth;
 	IntParameter* paramHeight;
 	FloatParameter* paramPPM;
+
+	/** Generates an assertion if this class leaks */
+	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PosPlot);
+
 };
 
 
@@ -98,6 +98,8 @@ private:
 
 	/** Class for plotting data */
 	PosPlot plt;
+
+
 
 	/** Generates an assertion if this class leaks */
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PosVisualizerPluginCanvas);

@@ -45,7 +45,7 @@ public:
 	~PosVisualizerPluginEditor() { }
 
 	/** Creates the canvas */
-	Visualizer* createNewCanvas();
+	Visualizer* createNewCanvas() override;
 
 	void buttonClicked(Button* button) override;
 

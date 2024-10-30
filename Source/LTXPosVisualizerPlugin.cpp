@@ -22,8 +22,8 @@
 */
 
 #include "LTXPosVisualizerPlugin.h"
-
 #include "LTXPosVisualizerPluginEditor.h"
+#include "util.h"
 
 namespace LTX {
 
@@ -33,7 +33,9 @@ PosVisualizerPlugin::PosVisualizerPlugin()
     this->addIntParameter(Parameter::GLOBAL_SCOPE, "Width", "Window width in the 'pixel' units sent by Bonsai.", 1000, 200, 5000, false);
     this->addIntParameter(Parameter::GLOBAL_SCOPE, "Height", "Window height  in the 'pixel' units sent by Bonsai.", 1000, 200, 5000, false);
     this->addFloatParameter(Parameter::GLOBAL_SCOPE, "PPM", "Pixels Per Meter", 400.0f, 100.0f, 1000.0f, 0.1, false);
-    
+
+    paramWidth = reinterpret_cast<IntParameter*>(getParameter("Width"));
+    paramHeight = reinterpret_cast<IntParameter*>(getParameter("Height"));
 }
 
 
@@ -73,18 +75,28 @@ void PosVisualizerPlugin::consumeRecentData(PosSample& latestPosSamp_){
     latestPosSamp_ = latestPosSamp;
 }
 
-void PosVisualizerPlugin::consumeRecentData(PosSample& latestPosSamp_, std::vector<PosPoint>& posPoints_, bool& isRecording_){
+void PosVisualizerPlugin::consumeRecentData(PosSample& latestPosSamp_, Path& path, bool& isRecording_){
     const ScopedLock sl(lock);
     isRecording_ = isRecording;
     latestPosSamp_ = latestPosSamp;
     if(clearRequired){
-        posPoints_.clear();
+        path.clear();
         clearRequired = false;
     }
+    if(!posPointsBuffer.size()){
+        return;
+    }
+
+    if(path.isEmpty()){
+        path.startNewSubPath(posPointsBuffer[0].x, posPointsBuffer[0].y);
+        // we don't bother to deduplicate the first point, as it doesn't really impact the rendering...
+    }
+
     for(auto& point : posPointsBuffer){
-        posPoints_.push_back(point);
+        path.lineTo(point.x, point.y);
     }
     posPointsBuffer.clear();
+
 }
 
 
@@ -99,7 +111,10 @@ void PosVisualizerPlugin::clearRecording() {
 void PosVisualizerPlugin::process(AudioBuffer<float>& buffer)
 {
     const ScopedLock sl(lock);
-    
+
+    const float width = static_cast<float>(paramWidth->getValue());
+    const float height = static_cast<float>(paramHeight->getValue());
+
     for (auto stream : getDataStreams())
     {
         const uint32 numSamples = getNumSamplesInBlock(stream->getStreamId());
@@ -108,31 +123,31 @@ void PosVisualizerPlugin::process(AudioBuffer<float>& buffer)
         }
 
         if (isRecording) {
-            // store x1 and y1 values into posPointsBuffer
+            // store x1 and y1 values into posPointsBuffer, clamped to [0, width] x [0, height]
             int originalSize = posPointsBuffer.size();
             posPointsBuffer.resize(originalSize + numSamples);
             for (auto chan : stream->getContinuousChannels()) {
                 int chanIndex = chan->getGlobalIndex();
                 if(chanIndex == ChannelMapping::x1) {
                     for (int i = 0; i < numSamples; i++) {
-                        posPointsBuffer[originalSize + i].x = buffer.getReadPointer(chanIndex)[i];
+                        float v = buffer.getReadPointer(chanIndex)[i];
+                        posPointsBuffer[originalSize + i].x = clamp(v, 0.f, width);
                     }
                 } else if (chanIndex == ChannelMapping::y1) {
                     for (int i = 0; i < numSamples; i++) {
-                        posPointsBuffer[originalSize + i].y = buffer.getReadPointer(chanIndex)[i];
-                   }
-
-
+                        float v = buffer.getReadPointer(chanIndex)[i];
+                        posPointsBuffer[originalSize + i].y = clamp(v, 0.f, height);
+                    }
                 }
             }
-             // we don't check numpix1, instead we assume x1 will be nan already if numpix1 is 0
+            // we don't check numpix1, instead we assume x1 will be nan already if numpix1 is 0
             posPointsBuffer.erase(
                 std::remove_if(posPointsBuffer.begin() + originalSize, posPointsBuffer.end(),
                     [](const PosPoint& samp) { return std::isnan(samp.x); }),
                     posPointsBuffer.end());
         }
 
-        // get the last value into latestPosSamp
+        // get the last value into latestPosSamp, clamped to [0, width] x [0, height]
         for (auto chan : stream->getContinuousChannels()) {
              int chanIndex = chan->getGlobalIndex();
              float v = buffer.getReadPointer(chanIndex)[numSamples-1];
@@ -141,16 +156,16 @@ void PosVisualizerPlugin::process(AudioBuffer<float>& buffer)
                  latestPosSamp.timestamp = v;
                  break;
              case ChannelMapping::x1:
-                 latestPosSamp.x1 = v;
+                 latestPosSamp.x1 = clamp(v, 0.f, width);
                  break;
              case ChannelMapping::y1:
-                 latestPosSamp.y1 = v;
+                 latestPosSamp.y1 = clamp(v, 0.f, height);
                  break;
              case ChannelMapping::x2:
-                 latestPosSamp.x2 = v;
+                 latestPosSamp.x2 = clamp(v, 0.f, width);
                  break;
              case ChannelMapping::y2:
-                 latestPosSamp.y2 = v;
+                 latestPosSamp.y2 = clamp(v, 0.f, height);
                  break;
              case ChannelMapping::numpix1:
                  latestPosSamp.numpix1 = v;
