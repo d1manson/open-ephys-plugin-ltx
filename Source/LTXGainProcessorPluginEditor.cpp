@@ -39,7 +39,7 @@ namespace LTX {
         gain_params(gain_params_)
     {
 
-        const int sliderWidth = 24;
+        const int sliderWidth = 30;
         const int sliderHeight = 60;
         const int labelHeight = 20;
         const int padding = 10;
@@ -96,7 +96,7 @@ namespace LTX {
             addAndMakeVisible(slider);
             for (Component* c : slider->getChildren()) {
                 if (Label* label = dynamic_cast<Label*>(c)) {
-                    label->setFont(Font(8));
+                    label->setFont(Font(12));
                 }
             }
         }

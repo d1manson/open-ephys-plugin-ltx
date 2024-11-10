@@ -121,7 +121,7 @@ namespace LTX {
                         this,
                         Parameter::CONTINUOUS_CHANNEL_SCOPE,
                         "Gain",
-                        "Multiply the voltage by x", 1.0f, -2.0f, 2.0f, 0.05f);
+                        "Multiply the voltage by x", 1.0f, -2.0f, 3.0f, 0.05f);
                 }
             }
         }
