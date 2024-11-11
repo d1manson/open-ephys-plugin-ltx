@@ -25,7 +25,7 @@
 template <size_t N, int Min, int Max>
 inline void float32sToInt8s(const float* src, int8* dest) {
     static_assert(N == 40, "expected 40 samples per spike");
-    static_assert(Min == -250 && Max == 250, "expected input range [-250,250]");
+    static_assert(Min == -125 && Max == 125, "expected input range [-125,125]");
 
     // TODO(Optimisation): can we do better here using SIMD?
     //       For N=40, use SIMD 512bit intrinsics three times, rather than a loop
@@ -33,7 +33,7 @@ inline void float32sToInt8s(const float* src, int8* dest) {
     //       should be able to make that static as the zeros will never be overwritten
     //       can then use 16,16,16 float operations. Think there might even be a builtin way to "saturate" the cast
     for (int i = 0; i < N; i++) {
-        int32 v = static_cast<int32>(src[i]) / 2; // see static_assert above regarding expected input range [-250,250]
+        int32 v = static_cast<int32>(src[i]); // see static_assert above regarding expected input range [-250,250]
         dest[i] = std::min(std::max(v, -128), 127);
     }
 }

@@ -318,7 +318,7 @@ namespace LTX {
         for (int i = 0; i < spikesNumChans; i++)
         {
             std::memcpy(&spikeBuffer[i * spikesBytesPerChan], &timestamp, 4);
-            float32sToInt8s<oeSampsPerSpike, -250, 250>(
+            float32sToInt8s<oeSampsPerSpike, -125, 125>(
                 &voltageData[i * oeSampsPerSpike],
                 &spikeBuffer[i * spikesBytesPerChan + 4 /* timestamp bytes */]);
         }
