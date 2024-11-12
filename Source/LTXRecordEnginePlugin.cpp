@@ -305,7 +305,9 @@ namespace LTX {
             return;
         }
         EventPtr eventStruct = Event::deserialize(event, getEventChannel(eventChannel));
-        if (eventStruct->getTimestampInSeconds() < startingTimestamp) {
+        if (startingTimestamp == TIMESTAMP_UNINITIALIZED) {
+            return;
+        } else if (eventStruct->getTimestampInSeconds() < startingTimestamp) {
             return;
         }
 
@@ -313,13 +315,15 @@ namespace LTX {
         const std::string key = "ttl_" + std::to_string(eventChannel);
         ttlFile->AddHeaderValue(key, eventStruct->getTimestampInSeconds() - startingTimestamp);
     }
-        
+
     void RecordEnginePlugin::writeSpike(int electrodeIndex, const Spike * spike)
     {
         if (mode != RecordMode::SPIKES_AND_SET) {
             return;
         }
-        if (spike->getTimestampInSeconds() < startingTimestamp) {
+        if (startingTimestamp == TIMESTAMP_UNINITIALIZED) {
+            return;
+        } else if (spike->getTimestampInSeconds() < startingTimestamp) {
             return;
         }
         constexpr int totalBytes = spikesBytesPerChan * spikesNumChans;
