@@ -99,6 +99,8 @@ namespace LTX {
         std::vector<std::unique_ptr<LTXFile>> tetFiles;
         std::vector<uint64> tetSpikeCount;
 
+        std::unique_ptr<LTXFile> ttlFile;
+
         std::vector<std::unique_ptr<LTXFile>> eegFiles;
         std::vector<uint64> eegFullSampCount;
 

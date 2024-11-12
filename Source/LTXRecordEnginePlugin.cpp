@@ -117,6 +117,10 @@ namespace LTX {
                 f->AddHeaderPlaceholder("num_spikes");
                 tetSpikeCount.push_back(0);
             }
+
+            if (getNumRecordedEventChannels() > 0){
+                ttlFile = std::make_unique<LTXFile>(basePath, ".ttl", start_tm);
+            }
         }
         else if (mode == RecordMode::EEG_ONLY) {
             eegFiles.clear();
@@ -196,6 +200,10 @@ namespace LTX {
             for (int i = 0; i < tetFiles.size(); i++) {
                 tetFiles[i]->FinaliseHeaderPlaceholder(tetSpikeCount[i]);
                 tetFiles[i]->FinaliseFile(end_tm);
+            }
+
+            if(ttlFile != nullptr){
+                ttlFile->FinaliseFile(end_tm);
             }
         }
         else if (mode == RecordMode::EEG_ONLY) {
@@ -293,8 +301,15 @@ namespace LTX {
 
     void RecordEnginePlugin::writeEvent(int eventChannel, const EventPacket& event)
     {
-        // We don't currently support writing TTL data here. If you want TTL data use another
-        // record engine for that.
+        if(ttlFile == nullptr){
+            return;
+        }
+        if (event.getTimestampInSeconds() < startingTimestamp) {
+            return;
+        }
+
+        // it's kind of hacky to use AddHeaderValue here, but it does what we need, namely writes a text value
+        ttlFile->AddHeaderValue("ttl_" + String(eventChannel), event.getTimestampInSeconds() - startingTimestamp);
     }
 
 

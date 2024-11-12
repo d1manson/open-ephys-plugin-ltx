@@ -67,7 +67,8 @@ namespace LTX {
 	template void LTXFile::AddHeaderValue<char const*>(const std::string&, char const*);
 	template void LTXFile::AddHeaderValue<std::string>(const std::string&, std::string);
 	template void LTXFile::AddHeaderValue<long long>(const std::string&, long long);
-	
+	template void LTXFile::AddHeaderValue<double>(const std::string&, double);
+
 	void LTXFile::AddHeaderPlaceholder(const std::string& key) {
 		std::lock_guard<std::mutex> lock(mut);
 
