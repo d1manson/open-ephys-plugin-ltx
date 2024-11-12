@@ -304,15 +304,15 @@ namespace LTX {
         if(ttlFile == nullptr){
             return;
         }
-        if (event.getTimestampInSeconds() < startingTimestamp) {
+        EventPtr eventStruct = Event::deserialize(event, getEventChannel(eventChannel));
+        if (eventStruct->getTimestampInSeconds() < startingTimestamp) {
             return;
         }
 
         // it's kind of hacky to use AddHeaderValue here, but it does what we need, namely writes a text value
-        ttlFile->AddHeaderValue("ttl_" + String(eventChannel), event.getTimestampInSeconds() - startingTimestamp);
+        const std::string key = "ttl_" + std::to_string(eventChannel);
+        ttlFile->AddHeaderValue(key, eventStruct->getTimestampInSeconds() - startingTimestamp);
     }
-
-
         
     void RecordEnginePlugin::writeSpike(int electrodeIndex, const Spike * spike)
     {
