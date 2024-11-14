@@ -299,21 +299,30 @@ namespace LTX {
 
     }
 
-    void RecordEnginePlugin::writeEvent(int eventChannel, const EventPacket& event)
+    void RecordEnginePlugin::writeEvent(int eventIndex, const EventPacket& event)
     {
         if(ttlFile == nullptr){
             return;
         }
-        EventPtr eventStruct = Event::deserialize(event, getEventChannel(eventChannel));
+        const EventChannel* info = getEventChannel(eventIndex);
+        EventPtr eventStruct = Event::deserialize(event, info);
+
         if (startingTimestamp == TIMESTAMP_UNINITIALIZED) {
             return;
         } else if (eventStruct->getTimestampInSeconds() < startingTimestamp) {
             return;
+        } else if (eventStruct->getEventType() != EventChannel::TTL) {
+            return;
         }
 
-        // it's kind of hacky to use AddHeaderValue here, but it does what we need, namely writes a text value
-        const std::string key = "ttl_" + std::to_string(eventChannel);
-        ttlFile->AddHeaderValue(key, eventStruct->getTimestampInSeconds() - startingTimestamp);
+        TTLEvent* ttl = static_cast<TTLEvent*>(eventStruct.get());
+
+        std::ostringstream str_stream;
+        str_stream << 'ttl_' << (ttl->getLine()+1) << " "
+                   << (eventStruct->getTimestampInSeconds() - startingTimestamp) << " "
+                   << (ttl->getState() ? '1' : '0') << "\r\n";
+        std::string str = str_stream.str();
+        ttlFile->WriteBinaryData((void*)str.c_str(), str.size());
     }
 
     void RecordEnginePlugin::writeSpike(int electrodeIndex, const Spike * spike)
