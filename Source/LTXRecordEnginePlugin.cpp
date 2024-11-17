@@ -28,8 +28,8 @@ namespace LTX {
     constexpr int eegInputSampRate = 30000;
     constexpr int eegOutputSampRate = 1000;
     constexpr int eegDownsampleBy = eegInputSampRate / eegOutputSampRate;
-    constexpr int posWindowSize = 1000; // todo: allow user to configure this
-    constexpr int posPixelsPerPos = 600; // todo: allow user to configure this
+    constexpr int posWindowSize = 700;
+    constexpr int posPixelsPerPos = 795;
     constexpr int requiredPosChans = 7; // see assertion below for more details
     constexpr int spikesNumChans = 4;
     constexpr int spikesBytesPerChan = 4 /* 4 byte timestamp */ + 50 /* one-byte voltage for 50 samples */;
@@ -117,6 +117,10 @@ namespace LTX {
                 f->AddHeaderPlaceholder("num_spikes");
                 tetSpikeCount.push_back(0);
             }
+
+            if (getNumRecordedEventChannels() > 0){
+                ttlFile = std::make_unique<LTXFile>(basePath, ".ttl", start_tm);
+            }
         }
         else if (mode == RecordMode::EEG_ONLY) {
             eegFiles.clear();
@@ -130,7 +134,7 @@ namespace LTX {
                     return;
                 }
 
-                eegFiles.push_back(std::make_unique<LTXFile>(basePath, ".efg" + (i == 0 ? "" : std::to_string(i + 1)), start_tm));
+                eegFiles.push_back(std::make_unique<LTXFile>(basePath, ".egf" + (i == 0 ? "" : std::to_string(i + 1)), start_tm));
                 LTXFile* f = eegFiles.back().get();
                 f->AddHeaderValue("num_chans", 1);
                 f->AddHeaderValue("sample_rate", std::to_string(eegOutputSampRate) + " hz");
@@ -145,6 +149,7 @@ namespace LTX {
                 CoreServices::setAcquisitionStatus(false);
                 return;
             }
+
 
             posFile = std::make_unique<LTXFile>(basePath, ".pos", start_tm);
 
@@ -196,6 +201,10 @@ namespace LTX {
             for (int i = 0; i < tetFiles.size(); i++) {
                 tetFiles[i]->FinaliseHeaderPlaceholder(tetSpikeCount[i]);
                 tetFiles[i]->FinaliseFile(end_tm);
+            }
+
+            if(ttlFile != nullptr){
+                ttlFile->FinaliseFile(end_tm);
             }
         }
         else if (mode == RecordMode::EEG_ONLY) {
@@ -291,20 +300,40 @@ namespace LTX {
 
     }
 
-    void RecordEnginePlugin::writeEvent(int eventChannel, const EventPacket& event)
+    void RecordEnginePlugin::writeEvent(int eventIndex, const EventPacket& event)
     {
-        // We don't currently support writing TTL data here. If you want TTL data use another
-        // record engine for that.
+        if(ttlFile == nullptr){
+            return;
+        }
+        const EventChannel* info = getEventChannel(eventIndex);
+        EventPtr eventStruct = Event::deserialize(event, info);
+
+        if (startingTimestamp == TIMESTAMP_UNINITIALIZED) {
+            return;
+        } else if (eventStruct->getTimestampInSeconds() < startingTimestamp) {
+            return;
+        } else if (eventStruct->getEventType() != EventChannel::TTL) {
+            return;
+        }
+
+        TTLEvent* ttl = static_cast<TTLEvent*>(eventStruct.get());
+
+        std::ostringstream str_stream;
+        str_stream << "ttl_" << (ttl->getLine()+1) << " "
+                   << (eventStruct->getTimestampInSeconds() - startingTimestamp) << " "
+                   << (ttl->getState() ? '1' : '0') << "\r\n";
+        std::string str = str_stream.str();
+        ttlFile->WriteBinaryData((void*)str.c_str(), str.size());
     }
 
-
-        
     void RecordEnginePlugin::writeSpike(int electrodeIndex, const Spike * spike)
     {
         if (mode != RecordMode::SPIKES_AND_SET) {
             return;
         }
-        if (spike->getTimestampInSeconds() < startingTimestamp) {
+        if (startingTimestamp == TIMESTAMP_UNINITIALIZED) {
+            return;
+        } else if (spike->getTimestampInSeconds() < startingTimestamp) {
             return;
         }
         constexpr int totalBytes = spikesBytesPerChan * spikesNumChans;
