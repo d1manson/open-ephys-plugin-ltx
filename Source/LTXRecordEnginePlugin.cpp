@@ -333,7 +333,7 @@ namespace LTX {
         }
         if (startingTimestamp == TIMESTAMP_UNINITIALIZED) {
             return;
-        } else if (spike->getTimestampInSeconds() < 0) {
+        } else if (spike->getTimestampInSeconds() < startingTimestamp) {
             return;
         }
         constexpr int totalBytes = spikesBytesPerChan * spikesNumChans;
@@ -341,7 +341,7 @@ namespace LTX {
 
         int8 spikeBuffer[totalBytes] = {}; // initialise with zeros
 
-        int32_t timestamp = BSWAP32(static_cast<int32_t>(spike->getTimestampInSeconds() * timestampTimebase));
+        int32_t timestamp = BSWAP32(static_cast<int32_t>((spike->getTimestampInSeconds() - startingTimestamp) * timestampTimebase));
 
         const float* voltageData = spike->getDataPointer();
         for (int i = 0; i < spikesNumChans; i++)
@@ -376,8 +376,6 @@ namespace LTX {
 
         // not 100% sure this is a safe calculation to do here, but I think it probably is if we only have one stream as there's not fancy synchronization to contend with
         startingTimestamp = static_cast<double>(sampleNumber) / sourceSampleRate;
-
-        // confusingly, for spikes the startingTimestamp should be ignored as it's already been subtracted off the value somewhere upstream
     }
 
 
