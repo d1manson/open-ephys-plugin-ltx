@@ -118,7 +118,7 @@ public:
 
 
     /* For use by the LTXPosVisualiserPluginCanvas to communicate data across threads. */
-    void consumeRecentData(PosSample& latestPosSamp_, Path& path, bool& isRecording_);
+    void consumeRecentData(PosSample& latestPosSamp_, std::vector<PosPoint>& recordedPosPoints_, bool& isRecording_);
 
 private:
 

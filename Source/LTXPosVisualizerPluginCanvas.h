@@ -54,7 +54,7 @@ private:
 	/** Pointer to the processor class */
 	PosVisualizerPlugin* processor;
 
-    Path path;
+    std::vector<PosPoint> recordedPosPoints;
 	IntParameter* paramWidth;
 	IntParameter* paramHeight;
 	FloatParameter* paramPPM;
