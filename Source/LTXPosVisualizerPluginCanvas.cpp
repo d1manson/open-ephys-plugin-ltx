@@ -30,6 +30,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 namespace LTX{
 
 	const int margin = 80;
+    const int MAX_PATH_POINTS_RENDERED = 45000;
 
 	PosPlot::PosPlot(PosVisualizerPlugin* processor_)
 		: processor(processor_) {
@@ -49,7 +50,7 @@ namespace LTX{
 
         PosVisualizerPlugin::PosSample posSamp;
         bool isRecording;
-        processor->consumeRecentData(posSamp, path, isRecording);
+        processor->consumeRecentData(posSamp, recordedPosPoints, isRecording);
 
 		const float pixelFactor = std::min(
 			(getWidth() - margin * 2) / static_cast<float>(W),
@@ -70,13 +71,24 @@ namespace LTX{
 		g.drawSingleLineText("< " + formatFloat(H * 100 / ppm, 0) + "cm >", toXPixels(0) - 6, toYPixels(H / 2), Justification::centred);
 		g.restoreState();
 
-        if(!path.isEmpty()){
+        if(recordedPosPoints.size() >= 2){
             // we always render the path (if there is any), just in a different shade when recording is not currently active
-            AffineTransform transform = AffineTransform::scale(pixelFactor).translated(margin, margin);
-            Path transformedPath = Path();
-            transformedPath.addPath(path, transform);
+
+            // * pixelFactor + margin
             g.setColour(isRecording ? Colours::black : Colours::grey);
-            g.strokePath(transformedPath, PathStrokeType(1.0f));
+
+            // JUCE's line drawing performs very poorly (possibly this will change in v8), so if there are very large number of
+            // points to be drawn, we ignore the oldest ones, and just render the most recent MAX_PATH_POINTS_RENDERED points.
+            size_t startIdx = recordedPosPoints.size() > MAX_PATH_POINTS_RENDERED ? recordedPosPoints.size() - MAX_PATH_POINTS_RENDERED : 0;
+            for (size_t i = startIdx; i < recordedPosPoints.size() - 1; ++i) {
+                g.drawLine(
+					recordedPosPoints[i].x * pixelFactor + margin,
+					recordedPosPoints[i].y * pixelFactor + margin,
+					recordedPosPoints[i + 1].x * pixelFactor + margin,
+					recordedPosPoints[i + 1].y * pixelFactor + margin,
+					1.0f
+                );
+            }
 		}
 
 

@@ -70,28 +70,21 @@ void PosVisualizerPlugin::stopRecording() {
     isRecording = false;
 }
 
-void PosVisualizerPlugin::consumeRecentData(PosSample& latestPosSamp_, Path& path, bool& isRecording_){
+void PosVisualizerPlugin::consumeRecentData(PosSample& latestPosSamp_, std::vector<PosPoint>& recordedPosPoints_, bool& isRecording_){
     const ScopedLock sl(lock);
     isRecording_ = isRecording;
     latestPosSamp_ = latestPosSamp;
     if(clearRequired){
-        path.clear();
+        recordedPosPoints_.clear();
         clearRequired = false;
     }
     if(!posPointsBuffer.size()){
         return;
     }
 
-    if(path.isEmpty()){
-        path.startNewSubPath(posPointsBuffer[0].x, posPointsBuffer[0].y);
-        // we don't bother to deduplicate the first point, as it doesn't really impact the rendering...
-    }
+    recordedPosPoints_.insert(recordedPosPoints_.end(), posPointsBuffer.begin(), posPointsBuffer.end());
 
-    for(auto& point : posPointsBuffer){
-        path.lineTo(point.x, point.y);
-    }
     posPointsBuffer.clear();
-
 }
 
 
