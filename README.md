@@ -54,4 +54,18 @@ inspired by existing code.
 As shown in `Source/OpenEphysLib` we have a few different kinds of plugin in this repo, so make sure to read all the relevant docs.
 
 
+I found on Mac that you can build using this:
 
+```bash
+brew install cmake
+
+# run this is the main GUI's Build dir (need to do this first)
+CMAKE_C_COMPILER=clang CMAKE_CXX_COMPILER=clang cmake -G "Xcode" ..
+
+# run this in the root of this plugin (set the GUI_BASE_DIR appropriately)
+GUI_BASE_DIR=../main-gui CMAKE_C_COMPILER=clang CMAKE_CXX_COMPILER=clang cmake -G "Xcode" .
+
+# and then to actually build
+cmake --build . --config Release -- -arch x86_64 &&
+cp -R Release/open-ephys-plugin-ltx.bundle /Users/<YOUR_MAC_USER_NAME_HERE>/Library/Application\ Support/open-ephys/plugins-api8/ 
+```
