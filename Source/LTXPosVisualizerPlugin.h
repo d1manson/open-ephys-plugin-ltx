@@ -120,6 +120,8 @@ public:
     /* For use by the LTXPosVisualiserPluginCanvas to communicate data across threads. */
     void consumeRecentData(PosSample& latestPosSamp_, std::vector<PosPoint>& recordedPosPoints_, bool& isRecording_);
 
+
+	void parameterValueChanged(Parameter* param) override;
 private:
 
     /* The following bits are collected up on the hot-path signal processing thread and can then be communicated

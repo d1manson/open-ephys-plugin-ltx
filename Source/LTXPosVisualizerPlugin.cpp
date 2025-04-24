@@ -23,6 +23,7 @@
 
 #include "LTXPosVisualizerPlugin.h"
 #include "LTXPosVisualizerPluginEditor.h"
+#include "LTXSharedState.h"
 #include "util.h"
 
 namespace LTX {
@@ -54,7 +55,6 @@ AudioProcessorEditor* PosVisualizerPlugin::createEditor()
 
 void PosVisualizerPlugin::updateSettings()
 {
-
 }
 
 
@@ -198,5 +198,12 @@ void PosVisualizerPlugin::loadCustomParametersFromXml(XmlElement* parentElement)
 {
 
 }
+
+
+void PosVisualizerPlugin::parameterValueChanged(Parameter* param) {
+    LTX::SharedState::window_max_x = getParameter("Width")->getValue();
+    LTX::SharedState::window_max_y = getParameter("Height")->getValue();
+    LTX::SharedState::pixels_per_metre = reinterpret_cast<FloatParameter*>(getParameter("PPM"))->getValue();
+};
 
 }
