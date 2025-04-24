@@ -22,14 +22,21 @@
 
 #include "LTXRecordEnginePlugin.h"
 #include "util.h"
+#include "LTXSharedState.h"
 
 namespace LTX {
+
+    namespace SharedState {
+        // see comment in LTXSharedState.h. These are the defaults. Any of the plugins can in principle change the values.
+        int window_max_x = 700;
+        int window_max_y = 700;
+        double pixels_per_metre = 795.0;
+    }
+
     constexpr int timestampTimebase = 96000;
     constexpr int eegInputSampRate = 30000;
     constexpr int eegOutputSampRate = 1000;
     constexpr int eegDownsampleBy = eegInputSampRate / eegOutputSampRate;
-    constexpr int posWindowSize = 700;
-    constexpr int posPixelsPerPos = 795;
     constexpr int requiredPosChans = 7; // see assertion below for more details
     constexpr int spikesNumChans = 4;
     constexpr int spikesBytesPerChan = 4 /* 4 byte timestamp */ + 50 /* one-byte voltage for 50 samples */;
@@ -173,15 +180,15 @@ namespace LTX {
             // not actually sure what they are supposed to mean. Presumably some of them
             // might need to be computed based on the observed data and set at the end of the trial
             // we also want the user to be able to configure some of them in the UX, somehow.
-            posFile->AddHeaderValue("pixels_per_metre", posPixelsPerPos);
+            posFile->AddHeaderValue("pixels_per_metre", LTX::SharedState::pixels_per_metre);
             posFile->AddHeaderValue("window_min_x", 0);
-            posFile->AddHeaderValue("window_max_x", posWindowSize);
+            posFile->AddHeaderValue("window_max_x", LTX::SharedState::window_max_x);
             posFile->AddHeaderValue("window_min_y", 0);
-            posFile->AddHeaderValue("window_max_y", posWindowSize);
+            posFile->AddHeaderValue("window_max_y", LTX::SharedState::window_max_y);
             posFile->AddHeaderValue("min_x", 0);
-            posFile->AddHeaderValue("max_x", posWindowSize);
+            posFile->AddHeaderValue("max_x", LTX::SharedState::window_max_x);
             posFile->AddHeaderValue("min_y", 0);
-            posFile->AddHeaderValue("max_y", posWindowSize);
+            posFile->AddHeaderValue("max_y", LTX::SharedState::window_max_y);
 
             posFile->AddHeaderPlaceholder("num_pos_samples");
             posSampCount = 0;

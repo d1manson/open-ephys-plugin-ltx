@@ -35,8 +35,9 @@ Note that you'll need three separate nodes in openephys, one to create set+tet f
 
 3. **Pos Viewer** This expects the same kind of data as the pos mode record engine (described above). It displays the current (x1,y1) and (x2,y2) values with circles sized acording to `numpix1` and `numpix2`
     respectively. When recording is on, it also shows the full path of `(x1,y1)` over the course of the recording. At the end of the recording the path stays until you either start a new recording or click
-   the 'clear path' button. This plugin lets you configure the window dimensions, and [NOT IMPLEMENTED YET] these values are actually read by the record engine and stored in the `.pos` file header (this is
-   a bit counter intuitive becuase it looks like this plugin is a passive view-only node, but it is actually providing this little bit of metadta to the record engine.
+   the 'clear path' button. This plugin lets you configure the window dimensions, and these values are actually read by the record engine and stored in the `.pos` file header (this is
+   a bit counter intuitive becuase it looks like this plugin is a passive view-only node, but it is actually providing this little bit of metadta to the record engine; this is implemented in a very hacky way
+   under the hood using global variables with `extern` as I couln't work out how to do it using the official plugin API).
 
 
    <img width="765" alt="Screenshot 2024-10-27 at 17 38 08" src="https://github.com/user-attachments/assets/f79dc117-d9a4-42d6-9ac8-338a34207a7c">
