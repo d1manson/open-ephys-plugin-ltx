@@ -111,59 +111,29 @@ void PosVisualizerPlugin::process(AudioBuffer<float>& buffer)
         }
 
         if (isRecording) {
-            // store x1 and y1 values into posPointsBuffer, clamped to [0, width] x [0, height]
-            int originalSize = posPointsBuffer.size();
-            posPointsBuffer.resize(originalSize + numSamples);
-            for (auto chan : stream->getContinuousChannels()) {
-                int chanIndex = chan->getGlobalIndex();
-                if(chanIndex == ChannelMapping::x1) {
-                    for (int i = 0; i < numSamples; i++) {
-                        float v = buffer.getReadPointer(chanIndex)[i];
-                        posPointsBuffer[originalSize + i].x = clamp(v, 0.f, width);
-                    }
-                } else if (chanIndex == ChannelMapping::y1) {
-                    for (int i = 0; i < numSamples; i++) {
-                        float v = buffer.getReadPointer(chanIndex)[i];
-                        posPointsBuffer[originalSize + i].y = clamp(v, 0.f, height);
-                    }
-                }
+            // store x1 and y1 values into posPointsBuffer, clamped to [0, width] x [0, height], ignoring NaN values
+            auto x1_buffer = buffer.getReadPointer(ChannelMapping::x1);
+            auto y1_buffer = buffer.getReadPointer(ChannelMapping::y1);
+            
+            int size = posPointsBuffer.size();
+            posPointsBuffer.resize(size + numSamples);
+            for (int i = 0; i < numSamples; i++) {
+                posPointsBuffer[size].x = clamp(x1_buffer[i], 0.f, width);
+                posPointsBuffer[size].y = clamp(y1_buffer[i], 0.f, height);
+                size += !std::isnan(x1_buffer[i]); // note we only check x1 here (maybe we could/should check numpix1>0 instead?)
             }
-            // we don't check numpix1, instead we assume x1 will be nan already if numpix1 is 0
-            posPointsBuffer.erase(
-                std::remove_if(posPointsBuffer.begin() + originalSize, posPointsBuffer.end(),
-                    [](const PosPoint& samp) { return std::isnan(samp.x); }),
-                    posPointsBuffer.end());
+            posPointsBuffer.resize(size); // shrink the vector if there were NaN values above, otherwise this is a no-op
+
         }
 
         // get the last value into latestPosSamp, clamped to [0, width] x [0, height]
-        for (auto chan : stream->getContinuousChannels()) {
-             int chanIndex = chan->getGlobalIndex();
-             float v = buffer.getReadPointer(chanIndex)[numSamples-1];
-             switch (chanIndex) {
-             case ChannelMapping::Timestamp:
-                 latestPosSamp.timestamp = v;
-                 break;
-             case ChannelMapping::x1:
-                 latestPosSamp.x1 = clamp(v, 0.f, width);
-                 break;
-             case ChannelMapping::y1:
-                 latestPosSamp.y1 = clamp(v, 0.f, height);
-                 break;
-             case ChannelMapping::x2:
-                 latestPosSamp.x2 = clamp(v, 0.f, width);
-                 break;
-             case ChannelMapping::y2:
-                 latestPosSamp.y2 = clamp(v, 0.f, height);
-                 break;
-             case ChannelMapping::numpix1:
-                 latestPosSamp.numpix1 = v;
-                 break;
-             case ChannelMapping::numpix2:
-                 latestPosSamp.numpix2 = v;
-                 break;
-             }
-        }
-
+        latestPosSamp.timestamp = buffer.getReadPointer(ChannelMapping::Timestamp)[numSamples-1];
+        latestPosSamp.x1 = clamp(buffer.getReadPointer(ChannelMapping::x1)[numSamples-1], 0.f, width);
+        latestPosSamp.y1 = clamp(buffer.getReadPointer(ChannelMapping::y1)[numSamples-1], 0.f, height);
+        latestPosSamp.x2 = clamp(buffer.getReadPointer(ChannelMapping::x2)[numSamples-1], 0.f, width);
+        latestPosSamp.y2 = clamp(buffer.getReadPointer(ChannelMapping::y2)[numSamples-1], 0.f, height);
+        latestPosSamp.numpix1 = buffer.getReadPointer(ChannelMapping::numpix1)[numSamples-1];
+        latestPosSamp.numpix2 = buffer.getReadPointer(ChannelMapping::numpix2)[numSamples-1];
         return; // should only be one data stream
     }
 
