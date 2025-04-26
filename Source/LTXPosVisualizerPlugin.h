@@ -131,8 +131,10 @@ public:
 	std::atomic<bool> isRecording {false};
 
 private:
-    IntParameter* paramWidth;
-    IntParameter* paramHeight;
+    IntParameter* paramLeft;
+    IntParameter* paramRight;
+	IntParameter* paramTop;
+    IntParameter* paramBottom;
 
 	/** Generates an assertion if this class leaks */
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PosVisualizerPlugin);

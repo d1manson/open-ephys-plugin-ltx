@@ -29,6 +29,8 @@ namespace LTX {
     namespace SharedState {
         // see comment in LTXSharedState.h. These are the defaults. Any of the plugins can in principle change the values.
         std::atomic<int> window_max_x {700};
+        std::atomic<int> window_min_x {0};
+        std::atomic<int> window_min_y {0};
         std::atomic<int> window_max_y {700};
         std::atomic<float> pixels_per_metre {795.0};
     }
@@ -177,17 +179,16 @@ namespace LTX {
             posFile->AddHeaderValue("bearing_colour_3", 0);
             posFile->AddHeaderValue("bearing_colour_4", 0);
 
-            // not actually sure what they are supposed to mean. Presumably some of them
-            // might need to be computed based on the observed data and set at the end of the trial
-            // we also want the user to be able to configure some of them in the UX, somehow.
+            // not actually sure what they are supposed to mean. Maybe some of them
+            // might need to be computed based on the observed data and set at the end of the trial rather than configured by the user?
             posFile->AddHeaderValue("pixels_per_metre", static_cast<double>(LTX::SharedState::pixels_per_metre.load()));
-            posFile->AddHeaderValue("window_min_x", 0);
+            posFile->AddHeaderValue("window_min_x", LTX::SharedState::window_min_x.load());
             posFile->AddHeaderValue("window_max_x", LTX::SharedState::window_max_x.load());
-            posFile->AddHeaderValue("window_min_y", 0);
+            posFile->AddHeaderValue("window_min_y", LTX::SharedState::window_min_y.load());
             posFile->AddHeaderValue("window_max_y", LTX::SharedState::window_max_y.load());
-            posFile->AddHeaderValue("min_x", 0);
+            posFile->AddHeaderValue("min_x", LTX::SharedState::window_min_x.load());
             posFile->AddHeaderValue("max_x", LTX::SharedState::window_max_x.load());
-            posFile->AddHeaderValue("min_y", 0);
+            posFile->AddHeaderValue("min_y", LTX::SharedState::window_min_y.load());
             posFile->AddHeaderValue("max_y", LTX::SharedState::window_max_y.load());
 
             posFile->AddHeaderPlaceholder("num_pos_samples");

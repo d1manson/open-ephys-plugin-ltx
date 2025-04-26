@@ -9,8 +9,10 @@ engine to write. Any of the plugins here can update these values and they will b
 */
 namespace LTX {
     namespace SharedState {
+        extern std::atomic<int> window_min_x;
         extern std::atomic<int> window_max_x;
         extern std::atomic<int> window_max_y;
+        extern std::atomic<int> window_min_y;
         extern std::atomic<float> pixels_per_metre;
     }
 }

@@ -33,8 +33,10 @@ namespace LTX{
 
 	PosPlot::PosPlot(PosVisualizerPlugin* processor_)
 		: processor(processor_) {
-		paramWidth = reinterpret_cast<IntParameter*>(processor->getParameter("Width"));
-		paramHeight = reinterpret_cast<IntParameter*>(processor->getParameter("Height"));
+		paramLeft = reinterpret_cast<IntParameter*>(processor->getParameter("Left"));
+		paramRight = reinterpret_cast<IntParameter*>(processor->getParameter("Right"));
+		paramTop = reinterpret_cast<IntParameter*>(processor->getParameter("Top"));
+		paramBottom = reinterpret_cast<IntParameter*>(processor->getParameter("Bottom"));
 		paramPPM = reinterpret_cast<FloatParameter*>(processor->getParameter("PPM"));
 	}
 
@@ -43,8 +45,8 @@ namespace LTX{
 	void PosPlot::paint(Graphics& g)
 	{
 
-		float W = static_cast<float>(paramWidth->getValue());
-		float H = static_cast<float>(paramHeight->getValue());
+		float W = static_cast<float>(paramRight->getValue()) - static_cast<float>(paramLeft->getValue());
+		float H = static_cast<float>(paramBottom->getValue()) - static_cast<float>(paramTop->getValue());
 		float ppm = paramPPM->getValue();
 
         

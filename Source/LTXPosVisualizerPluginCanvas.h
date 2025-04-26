@@ -53,8 +53,11 @@ private:
 	/** Pointer to the processor class */
 	PosVisualizerPlugin* processor;
 
-	IntParameter* paramWidth;
-	IntParameter* paramHeight;
+	IntParameter* paramLeft;
+	IntParameter* paramRight;
+	IntParameter* paramTop;
+	IntParameter* paramBottom;
+
 	FloatParameter* paramPPM;
 
 	/** Generates an assertion if this class leaks */
