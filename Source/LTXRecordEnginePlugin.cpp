@@ -28,9 +28,9 @@ namespace LTX {
 
     namespace SharedState {
         // see comment in LTXSharedState.h. These are the defaults. Any of the plugins can in principle change the values.
-        int window_max_x = 700;
-        int window_max_y = 700;
-        double pixels_per_metre = 795.0;
+        std::atomic<int> window_max_x {700};
+        std::atomic<int> window_max_y {700};
+        std::atomic<float> pixels_per_metre {795.0};
     }
 
     constexpr int timestampTimebase = 96000;
@@ -180,15 +180,15 @@ namespace LTX {
             // not actually sure what they are supposed to mean. Presumably some of them
             // might need to be computed based on the observed data and set at the end of the trial
             // we also want the user to be able to configure some of them in the UX, somehow.
-            posFile->AddHeaderValue("pixels_per_metre", LTX::SharedState::pixels_per_metre);
+            posFile->AddHeaderValue("pixels_per_metre", static_cast<double>(LTX::SharedState::pixels_per_metre.load()));
             posFile->AddHeaderValue("window_min_x", 0);
-            posFile->AddHeaderValue("window_max_x", LTX::SharedState::window_max_x);
+            posFile->AddHeaderValue("window_max_x", LTX::SharedState::window_max_x.load());
             posFile->AddHeaderValue("window_min_y", 0);
-            posFile->AddHeaderValue("window_max_y", LTX::SharedState::window_max_y);
+            posFile->AddHeaderValue("window_max_y", LTX::SharedState::window_max_y.load());
             posFile->AddHeaderValue("min_x", 0);
-            posFile->AddHeaderValue("max_x", LTX::SharedState::window_max_x);
+            posFile->AddHeaderValue("max_x", LTX::SharedState::window_max_x.load());
             posFile->AddHeaderValue("min_y", 0);
-            posFile->AddHeaderValue("max_y", LTX::SharedState::window_max_y);
+            posFile->AddHeaderValue("max_y", LTX::SharedState::window_max_y.load());
 
             posFile->AddHeaderPlaceholder("num_pos_samples");
             posSampCount = 0;
@@ -261,8 +261,8 @@ namespace LTX {
             uint64 remainder = eegFullSampCount[writeChannel] % eegDownsampleBy;
             uint64 offset = remainder == 0 ? 0 : eegDownsampleBy - remainder;
             int8_t eegBuffer[outputBufferSize]; // warning: not initialised
-            int64 nSampsWritten = float32sToInt8sDownsampled<outputBufferSize, -250, 250, eegDownsampleBy >(
-                &dataBuffer[offset], eegBuffer, size - offset);
+            int64 nSampsWritten = float32sToInt8sDownsampled<static_cast<size_t>(outputBufferSize), -250, 250, eegDownsampleBy >(
+                &dataBuffer[offset], eegBuffer, size - static_cast<int>(offset));
             eegFiles[writeChannel]->WriteBinaryData(eegBuffer, nSampsWritten);
             eegFullSampCount[writeChannel] += size;
 

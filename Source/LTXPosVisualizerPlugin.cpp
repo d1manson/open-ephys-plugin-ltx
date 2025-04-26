@@ -173,7 +173,7 @@ void PosVisualizerPlugin::loadCustomParametersFromXml(XmlElement* parentElement)
 void PosVisualizerPlugin::parameterValueChanged(Parameter* param) {
     LTX::SharedState::window_max_x = getParameter("Width")->getValue();
     LTX::SharedState::window_max_y = getParameter("Height")->getValue();
-    LTX::SharedState::pixels_per_metre = reinterpret_cast<FloatParameter*>(getParameter("PPM"))->getValue();
+    LTX::SharedState::pixels_per_metre = getParameter("PPM")->getValue();
 };
 
 }
