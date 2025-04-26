@@ -27,6 +27,7 @@
 
 #include <ProcessorHeaders.h>
 #include <VisualizerWindowHeaders.h>
+#include "LTXDisplayBuffer.h"
 
 namespace LTX {
 
@@ -34,6 +35,7 @@ struct PosPoint {
     float x;
     float y;
 };
+
 
 /** 
 	A plugin that includes a canvas for displaying incoming data
@@ -56,15 +58,7 @@ public:
 		numpix2 = 6
 	};
 
-	struct PosSample {
-		float timestamp;
-		float x1;
-		float y1;
-		float x2;
-		float y2;
-		float numpix1;
-		float numpix2;
-	};
+
 
 
 
@@ -116,21 +110,27 @@ public:
 	/* If recording is no long active it is possible to wipe the recording from the visualisation */
 	void clearRecording();
 
-
-    /* For use by the LTXPosVisualiserPluginCanvas to communicate data across threads. */
-    void consumeRecentData(PosSample& latestPosSamp_, std::vector<PosPoint>& recordedPosPoints_, bool& isRecording_);
-
-
 	void parameterValueChanged(Parameter* param) override;
-private:
 
-    /* The following bits are collected up on the hot-path signal processing thread and can then be communicated
-     * to the GUI thread via the consumeRecentData method. The lock is used for simple thread-safety. */
-	CriticalSection lock;
-	PosSample latestPosSamp = {};
-	std::vector<PosPoint> posPointsBuffer;
-	bool isRecording = false;
-	bool clearRequired = false;
+
+	/** Note how each of the data points here is individually atomic, so you can in principle see a partial update, but i don't think that hugely matters. **/
+	struct {
+		std::atomic<float> timestamp;
+		std::atomic<float> x1;
+		std::atomic<float> y1;
+		std::atomic<float> x2;
+		std::atomic<float> y2;
+		std::atomic<float> numpix1;
+		std::atomic<float> numpix2;
+	} latestPosSamp = {};
+
+
+	// Note we only read 45000 points because JUCE's renderer is unable to quickly draw more than that, though that may change in JUCE 8.0 (Openephys 1.0)
+	// But even then we need to make sure that the max read is at least a few seconds less than the capacity (to avoid read tears, as explained in the DisplayBuffer class).
+	LTX::DisplayBuffer<PosPoint> recordingBuffer {50*60*60 /* 1hr @ 50hz ~ 1.4MB */, 50*60*15 /* max read of 15mins @ 50hz */};
+	std::atomic<bool> isRecording {false};
+
+private:
     IntParameter* paramWidth;
     IntParameter* paramHeight;
 

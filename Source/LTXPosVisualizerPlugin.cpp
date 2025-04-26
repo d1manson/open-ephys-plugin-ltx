@@ -28,8 +28,7 @@
 
 namespace LTX {
 
-PosVisualizerPlugin::PosVisualizerPlugin()
-    : GenericProcessor("Pos Viewer")
+PosVisualizerPlugin::PosVisualizerPlugin() : GenericProcessor("Pos Viewer")
 {
     this->addIntParameter(Parameter::GLOBAL_SCOPE, "Width", "Window width in the 'pixel' units sent by Bonsai.", 1000, 200, 5000, false);
     this->addIntParameter(Parameter::GLOBAL_SCOPE, "Height", "Window height  in the 'pixel' units sent by Bonsai.", 1000, 200, 5000, false);
@@ -59,47 +58,21 @@ void PosVisualizerPlugin::updateSettings()
 
 
 void PosVisualizerPlugin::startRecording() {
-    const ScopedLock sl(lock);
     isRecording = true;
-    clearRequired = true;
-    posPointsBuffer.clear();
+    recordingBuffer.clear();
 }
 
 void PosVisualizerPlugin::stopRecording() {
-    const ScopedLock sl(lock);
     isRecording = false;
-}
-
-void PosVisualizerPlugin::consumeRecentData(PosSample& latestPosSamp_, std::vector<PosPoint>& recordedPosPoints_, bool& isRecording_){
-    const ScopedLock sl(lock);
-    isRecording_ = isRecording;
-    latestPosSamp_ = latestPosSamp;
-    if(clearRequired){
-        recordedPosPoints_.clear();
-        clearRequired = false;
-    }
-    if(!posPointsBuffer.size()){
-        return;
-    }
-
-    recordedPosPoints_.insert(recordedPosPoints_.end(), posPointsBuffer.begin(), posPointsBuffer.end());
-
-    posPointsBuffer.clear();
 }
 
 
 void PosVisualizerPlugin::clearRecording() {
-    const ScopedLock sl(lock);
-    if (!isRecording) {
-        clearRequired = true;
-        posPointsBuffer.clear();
-    }
+    recordingBuffer.clear();
 }
 
 void PosVisualizerPlugin::process(AudioBuffer<float>& buffer)
 {
-    const ScopedLock sl(lock);
-
     const float width = static_cast<float>(paramWidth->getValue());
     const float height = static_cast<float>(paramHeight->getValue());
 
@@ -111,18 +84,14 @@ void PosVisualizerPlugin::process(AudioBuffer<float>& buffer)
         }
 
         if (isRecording) {
-            // store x1 and y1 values into posPointsBuffer, clamped to [0, width] x [0, height], ignoring NaN values
+            // store x1 and y1 values into recordingBuffer, clamped to [0, width] x [0, height], ignoring NaN values
             auto x1_buffer = buffer.getReadPointer(ChannelMapping::x1);
             auto y1_buffer = buffer.getReadPointer(ChannelMapping::y1);
             
-            int size = posPointsBuffer.size();
-            posPointsBuffer.resize(size + numSamples);
             for (int i = 0; i < numSamples; i++) {
-                posPointsBuffer[size].x = clamp(x1_buffer[i], 0.f, width);
-                posPointsBuffer[size].y = clamp(y1_buffer[i], 0.f, height);
-                size += !std::isnan(x1_buffer[i]); // note we only check x1 here (maybe we could/should check numpix1>0 instead?)
+                PosPoint point {clamp(x1_buffer[i], 0.f, width), clamp(y1_buffer[i], 0.f, height)};
+                recordingBuffer.write(point, !std::isnan(x1_buffer[i]));
             }
-            posPointsBuffer.resize(size); // shrink the vector if there were NaN values above, otherwise this is a no-op
 
         }
 
