@@ -78,7 +78,7 @@ namespace LTX {
             LOGC("LTX RecordEngine using mode:EEG_ONLY (", mode, ").");
         }
 
-        std::string basePath = rootFolder.getParentDirectory().getFullPathName().toStdString()
+        std::string basePath = CoreServices::getRecordingParentDirectory().getChildFile(CoreServices::getRecordingDirectoryName().toStdString()).getFullPathName().toStdString()
             + (experimentNumber == 1 ? "" : " e" + std::to_string(experimentNumber))
             + (recordingNumber == 0 ? "" : " r" + std::to_string(recordingNumber + 1));
 
