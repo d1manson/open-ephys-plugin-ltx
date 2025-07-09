@@ -38,6 +38,9 @@ namespace LTX {
 		/** The class destructor, used to deallocate memory */
 		~GainProcessorPlugin();
 
+		/** All plugin parameter objects must be created inside this method */
+		void registerParameters() override;
+
 		/** If the processor has a custom editor, this method must be defined to instantiate it. */
 		AudioProcessorEditor* createEditor() override;
 
@@ -67,7 +70,7 @@ namespace LTX {
 
 		/** Handles broadcast messages sent during acquisition
 			Called automatically whenever a broadcast message is sent through the signal chain */
-		void handleBroadcastMessage(String message) override;
+		void handleBroadcastMessage (const String& message, const int64 messageTimeMilliseconds) override;
 
 		/** Saving custom settings to XML. This method is not needed to save the state of
 			Parameter objects */

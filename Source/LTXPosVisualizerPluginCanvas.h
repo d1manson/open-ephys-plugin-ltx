@@ -82,9 +82,6 @@ public:
 	/** Called when the visualizer's tab becomes visible again */
 	void refreshState() override;
 
-	/** Updates settings */
-	void update() override;
-
 	/** Called instead of "repaint()" to avoid re-painting sub-components*/
 	void refresh() override;
 

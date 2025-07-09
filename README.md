@@ -69,4 +69,7 @@ GUI_BASE_DIR=../main-gui CMAKE_C_COMPILER=clang CMAKE_CXX_COMPILER=clang cmake -
 # and then to actually build
 cmake --build . --config Release -- -arch x86_64 &&
 cp -R Release/open-ephys-plugin-ltx.bundle /Users/<YOUR_MAC_USER_NAME_HERE>/Library/Application\ Support/open-ephys/plugins-api8/ 
+
+# or (if copying into the dev build of the gui):
+cp -R  Release/open-ephys-plugin-ltx.bundle "../main-gui/Build/Release/Open Ephys GUI.app/Contents/Plugins/" 
 ```

@@ -120,7 +120,8 @@ namespace LTX {
 
         desiredWidth = 100;
 
-        configureButton = std::make_unique<UtilityButton>("configure", titleFont);
+        configureButton = std::make_unique<UtilityButton>("configure");
+        configureButton->setFont(titleFont);
         configureButton->addListener(this);
         configureButton->setRadius(3.0f);
         configureButton->setBounds(10, 60, 80, 30);

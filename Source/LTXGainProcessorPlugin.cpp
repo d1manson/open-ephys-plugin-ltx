@@ -40,6 +40,11 @@ namespace LTX {
     }
 
 
+    void GainProcessorPlugin::registerParameters()
+    {
+        // Register parameters here, if any
+    }
+
     AudioProcessorEditor* GainProcessorPlugin::createEditor()
     {
         editor = std::make_unique<GainProcessorPluginEditor>(this);
@@ -61,7 +66,7 @@ namespace LTX {
             {
                 int chanIndex = chan->getGlobalIndex();
                 FloatVectorOperations::multiply(buffer.getWritePointer(chanIndex),
-                    gain_params_for_stream[chanIndex]->getValue(), numSamples);
+                    gain_params_for_stream[chanIndex]->getFloatValue(), static_cast<size_t>(numSamples));
             }
         }
     }
@@ -103,7 +108,7 @@ namespace LTX {
     }
 
 
-    void GainProcessorPlugin::handleBroadcastMessage(String message)
+    void GainProcessorPlugin::handleBroadcastMessage (const String& msg, const int64 messageTimeMilliseconds)
     {
 
     }
@@ -119,9 +124,10 @@ namespace LTX {
                 if (gain_params_stream[chanIdx] == nullptr) {
                     gain_params_stream[chanIdx] = std::make_unique<FloatParameter>(
                         this,
-                        Parameter::CONTINUOUS_CHANNEL_SCOPE,
+                        Parameter::ParameterScope::CONTINUOUS_CHANNEL_SCOPE,
+                        "gain",
                         "Gain",
-                        "Multiply the voltage by x", 1.0f, -2.0f, 3.0f, 0.05f);
+                        "Multiply the voltage by x", "x", 1.0f, -2.0f, 3.0f, 0.05f);
                 }
             }
         }
