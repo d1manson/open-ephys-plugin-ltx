@@ -53,7 +53,6 @@ namespace LTX {
     {
         RecordEngineManager* man = new RecordEngineManager("LTX", "LTX Format",
             &(engineFactory<RecordEnginePlugin>));
-
         return man;
     }
 
@@ -363,7 +362,6 @@ namespace LTX {
         tetSpikeCount[spike->getChannelIndex()]++;
     }
 
-
     void RecordEnginePlugin::writeTimestampSyncText(
         uint64 streamId,
         int64 sampleNumber,
@@ -386,5 +384,8 @@ namespace LTX {
         startingTimestamp = static_cast<double>(sampleNumber) / sourceSampleRate;
     }
 
+    void RecordEnginePlugin::setParameter (EngineParameter& parameter)
+    {
+    }
 
     }

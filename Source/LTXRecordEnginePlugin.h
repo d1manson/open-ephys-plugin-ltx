@@ -118,6 +118,9 @@ namespace LTX {
         };
         static_assert(sizeof(PosSample) == 4+8*2, "PosSample should be laid out in memory as 4+8*2 bytes.");
         std::vector<PosSample> posSamplesBuffer;
+        
+        /** Sets an engine parameter */
+	    void setParameter (EngineParameter& parameter) override;
     };
 
 }
