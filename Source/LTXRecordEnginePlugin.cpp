@@ -44,6 +44,7 @@ namespace LTX {
     constexpr int spikesBytesPerChan = 4 /* 4 byte timestamp */ + 50 /* one-byte voltage for 50 samples */;
     constexpr int oeSampsPerSpike = 40; // seems to be hard-coded as 8+32 = 40
     constexpr int posTimestampChannel = 0; // provided by the bonsai source plugin
+    constexpr int posNaN = 1023; // when writing pos data as uint16s, if we encounter a NaN in the source float data, we write this value.
 
     RecordEnginePlugin::RecordEnginePlugin() {}
 
@@ -300,7 +301,7 @@ namespace LTX {
             } else {
                 for (int i = 0; i < size; i++) {
                     posSamplesBuffer[i].xy_etc[writeChannel - 1] = BSWAP16(
-                        std::isnan(dataBuffer[i]) ? 0 : static_cast<uint16_t>(dataBuffer[i])
+                        std::isnan(dataBuffer[i]) ? posNaN : static_cast<uint16_t>(dataBuffer[i])
                     );
                 }
 
