@@ -37,7 +37,7 @@ namespace LTX {
 
     constexpr int timestampTimebase = 96000;
     constexpr int eegInputSampRate = 30000;
-    constexpr int eegOutputSampRate = 1000;
+    constexpr int eegOutputSampRate = 5000;
     constexpr int eegDownsampleBy = eegInputSampRate / eegOutputSampRate;
     constexpr int requiredPosChans = 7; // see assertion below for more details
     constexpr int spikesNumChans = 4;
