@@ -68,6 +68,9 @@ public:
 	/** The class destructor, used to deallocate memory*/
 	~PosVisualizerPlugin();
 
+	/** All plugin parameter objects must be created inside this method */
+	void registerParameters() override;
+
 	/** If the processor has a custom editor, this method must be defined to instantiate it. */
 	AudioProcessorEditor* createEditor() override;
 
@@ -94,7 +97,7 @@ public:
 
 	/** Handles broadcast messages sent during acquisition
 		Called automatically whenever a broadcast message is sent through the signal chain */
-	void handleBroadcastMessage(String message) override;
+	void handleBroadcastMessage (const String& message, const int64 messageTimeMilliseconds) override;
 
 	/** Saving custom settings to XML. This method is not needed to save the state of
 		Parameter objects */
@@ -125,9 +128,10 @@ public:
 	} latestPosSamp = {};
 
 
-	// Note we only read 45000 points because JUCE's renderer is unable to quickly draw more than that, though that may change in JUCE 8.0 (Openephys 1.0)
-	// But even then we need to make sure that the max read is at least a few seconds less than the capacity (to avoid read tears, as explained in the DisplayBuffer class).
-	LTX::DisplayBuffer<PosPoint> recordingBuffer {50*60*60 /* 1hr @ 50hz ~ 1.4MB */, 50*60*15 /* max read of 15mins @ 50hz */};
+	// Note we only read 120,000 points. Prior to JUCE 8 (Openephys 1.0) it was too slow to draw any more than 45,000 points. Which is in part why
+	// we went with this kind of DisplayBuffer concept (though in general, we needed some kind of high performing multi-threaded buffer).
+	// At the very least, the DisplayBuffer expects that the max read is at least a few seconds less than the capacity (to avoid read tears, as explained in the DisplayBuffer class).
+	LTX::DisplayBuffer<PosPoint> recordingBuffer {50*60*60 /* 1hr @ 50hz ~ 1.4MB */, 50*60*40 /* max read of 30mins @ 50hz */};
 	std::atomic<bool> isRecording {false};
 
 private:

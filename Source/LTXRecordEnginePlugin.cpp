@@ -37,13 +37,14 @@ namespace LTX {
 
     constexpr int timestampTimebase = 96000;
     constexpr int eegInputSampRate = 30000;
-    constexpr int eegOutputSampRate = 1000;
+    constexpr int eegOutputSampRate = 5000;
     constexpr int eegDownsampleBy = eegInputSampRate / eegOutputSampRate;
     constexpr int requiredPosChans = 7; // see assertion below for more details
     constexpr int spikesNumChans = 4;
     constexpr int spikesBytesPerChan = 4 /* 4 byte timestamp */ + 50 /* one-byte voltage for 50 samples */;
     constexpr int oeSampsPerSpike = 40; // seems to be hard-coded as 8+32 = 40
     constexpr int posTimestampChannel = 0; // provided by the bonsai source plugin
+    constexpr int posNaN = 1023; // when writing pos data as uint16s, if we encounter a NaN in the source float data, we write this value.
 
     RecordEnginePlugin::RecordEnginePlugin() {}
 
@@ -53,7 +54,6 @@ namespace LTX {
     {
         RecordEngineManager* man = new RecordEngineManager("LTX", "LTX Format",
             &(engineFactory<RecordEnginePlugin>));
-
         return man;
     }
 
@@ -96,6 +96,11 @@ namespace LTX {
             setFile->AddHeaderValue("lightBearing_2", 180);
             setFile->AddHeaderValue("lightBearing_3", 0);
             setFile->AddHeaderValue("lightBearing_4", 0);
+
+            setFile->AddHeaderValue("colactive_1", 1);
+            setFile->AddHeaderValue("colactive_2", 1);
+            setFile->AddHeaderValue("colactive_3", 0);
+            setFile->AddHeaderValue("colactive_4", 0);
 
 
             tetFiles.clear();
@@ -296,7 +301,7 @@ namespace LTX {
             } else {
                 for (int i = 0; i < size; i++) {
                     posSamplesBuffer[i].xy_etc[writeChannel - 1] = BSWAP16(
-                        std::isnan(dataBuffer[i]) ? 0 : static_cast<uint16_t>(dataBuffer[i])
+                        std::isnan(dataBuffer[i]) ? posNaN : static_cast<uint16_t>(dataBuffer[i])
                     );
                 }
 
@@ -363,7 +368,6 @@ namespace LTX {
         tetSpikeCount[spike->getChannelIndex()]++;
     }
 
-
     void RecordEnginePlugin::writeTimestampSyncText(
         uint64 streamId,
         int64 sampleNumber,
@@ -386,5 +390,8 @@ namespace LTX {
         startingTimestamp = static_cast<double>(sampleNumber) / sourceSampleRate;
     }
 
+    void RecordEnginePlugin::setParameter (EngineParameter& parameter)
+    {
+    }
 
     }

@@ -108,7 +108,7 @@ namespace LTX {
 
     
     void GainPopupComponent::sliderValueChanged(Slider* slider) {
-        gain_params[sliders.indexOf(slider)]->setNextValue(slider->getValue());
+        gain_params[sliders.indexOf(slider)]->setNextValue(slider->getValue(), true);
     }
 
 
@@ -120,7 +120,8 @@ namespace LTX {
 
         desiredWidth = 100;
 
-        configureButton = std::make_unique<UtilityButton>("configure", titleFont);
+        configureButton = std::make_unique<UtilityButton>("configure");
+        configureButton->setFont(titleFont);
         configureButton->addListener(this);
         configureButton->setRadius(3.0f);
         configureButton->setBounds(10, 60, 80, 30);
@@ -131,7 +132,6 @@ namespace LTX {
 
     void GainProcessorPluginEditor::buttonClicked(Button* button)
     {
-        LOGC("Configure clicked!")
         if (button != configureButton.get()){
             return;
         }

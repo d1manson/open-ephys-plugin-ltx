@@ -33,11 +33,11 @@ namespace LTX{
 
 	PosPlot::PosPlot(PosVisualizerPlugin* processor_)
 		: processor(processor_) {
-		paramLeft = reinterpret_cast<IntParameter*>(processor->getParameter("Left"));
-		paramRight = reinterpret_cast<IntParameter*>(processor->getParameter("Right"));
-		paramTop = reinterpret_cast<IntParameter*>(processor->getParameter("Top"));
-		paramBottom = reinterpret_cast<IntParameter*>(processor->getParameter("Bottom"));
-		paramPPM = reinterpret_cast<FloatParameter*>(processor->getParameter("PPM"));
+		paramLeft = reinterpret_cast<IntParameter*>(processor->getParameter("left"));
+		paramRight = reinterpret_cast<IntParameter*>(processor->getParameter("right"));
+		paramTop = reinterpret_cast<IntParameter*>(processor->getParameter("top"));
+		paramBottom = reinterpret_cast<IntParameter*>(processor->getParameter("bottom"));
+		paramPPM = reinterpret_cast<FloatParameter*>(processor->getParameter("ppm"));
 	}
 
 	PosPlot::~PosPlot(){}
@@ -156,11 +156,6 @@ namespace LTX{
 
 	}
 
-
-	void PosVisualizerPluginCanvas::update()
-	{
-
-	}
 
 
 	void PosVisualizerPluginCanvas::refresh()

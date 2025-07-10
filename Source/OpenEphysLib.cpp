@@ -47,7 +47,7 @@ extern "C" EXPORT void getLibInfo(Plugin::LibraryInfo* info)
 	The GUI refuses to load plugins with mismatched API versions */
 	info->apiVersion = PLUGIN_API_VER;
 	info->name = "LTX Format";
-	info->libVersion = "0.1.0";
+	info->libVersion = "1.0.0";  // if updating this, also update the "created_by" header value in LTXFile.cpp
 	info->numPlugins = NUM_PLUGINS;
 }
 
@@ -57,20 +57,20 @@ extern "C" EXPORT int getPluginInfo(int index, Plugin::PluginInfo* info)
 	{
 	case 0:
 
-		info->type = Plugin::Type::RECORD_ENGINE;
+		info->type = Plugin::RECORD_ENGINE;
 		info->recordEngine.name = "LTX Format";
 		info->recordEngine.creator = &(Plugin::createRecordEngine<LTX::RecordEnginePlugin>);
 		break;
 
 	case 1:
-		info->type = Plugin::Type::PROCESSOR;
+		info->type = Plugin::PROCESSOR;
 		info->processor.name = "Gain";
 		info->processor.type = Processor::Type::FILTER;
 		info->processor.creator = &(Plugin::createProcessor<LTX::GainProcessorPlugin>);
 		break;
 
     case 2:
-		info->type = Plugin::Type::PROCESSOR;
+		info->type = Plugin::PROCESSOR;
 		info->processor.name = "Pos Viewer";
 		info->processor.type = Processor::Type::SINK;
 		info->processor.creator = &(Plugin::createProcessor<LTX::PosVisualizerPlugin>);

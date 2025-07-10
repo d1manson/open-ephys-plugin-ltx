@@ -31,15 +31,17 @@ namespace LTX {
 PosVisualizerPluginEditor::PosVisualizerPluginEditor(GenericProcessor* p)
     : VisualizerEditor(p, "Pos", 190)
 {
-    addTextBoxParameterEditor("Left", 10, 18);
-    addTextBoxParameterEditor("Right", 100, 18);
+    desiredWidth = 240;;
+    addTextBoxParameterEditor(Parameter::ParameterScope::PROCESSOR_SCOPE, "left", 10, 25);
+    addTextBoxParameterEditor(Parameter::ParameterScope::PROCESSOR_SCOPE, "right", 10, 45);
 
-    addTextBoxParameterEditor("Top", 10, 53);
-    addTextBoxParameterEditor("Bottom", 100, 53);
-    addTextBoxParameterEditor("PPM", 10, 88);
+    addTextBoxParameterEditor(Parameter::ParameterScope::PROCESSOR_SCOPE, "top", 10, 65);
+    addTextBoxParameterEditor(Parameter::ParameterScope::PROCESSOR_SCOPE, "bottom", 10, 85);
+    addTextBoxParameterEditor(Parameter::ParameterScope::PROCESSOR_SCOPE, "ppm", 10, 105);
     
-    clearButton = std::make_unique<UtilityButton>("Clear Path", Font("Fira Code", "Regular", 10));
-    clearButton->setBounds(100, 106, 80, 20);
+    clearButton = std::make_unique<UtilityButton>("Clear Path");
+    clearButton->setFont(FontOptions("Fira Code", "Regular", 10));
+    clearButton->setBounds(150, 104, 80, 20);
     clearButton->addListener(this);
     clearButton->setTooltip("Can only clear display after recording has been stopped.");
     addAndMakeVisible(clearButton.get()); // makes the button a child component of the editor and makes it visible

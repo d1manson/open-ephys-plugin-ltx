@@ -38,6 +38,9 @@ namespace LTX {
 		/** The class destructor, used to deallocate memory */
 		~GainProcessorPlugin();
 
+		/** All plugin parameter objects must be created inside this method */
+		void registerParameters() override;
+
 		/** If the processor has a custom editor, this method must be defined to instantiate it. */
 		AudioProcessorEditor* createEditor() override;
 
@@ -67,7 +70,7 @@ namespace LTX {
 
 		/** Handles broadcast messages sent during acquisition
 			Called automatically whenever a broadcast message is sent through the signal chain */
-		void handleBroadcastMessage(String message) override;
+		void handleBroadcastMessage (const String& message, const int64 messageTimeMilliseconds) override;
 
 		/** Saving custom settings to XML. This method is not needed to save the state of
 			Parameter objects */
@@ -81,7 +84,13 @@ namespace LTX {
 		void ensureParamsExist();
 
 		// maps std::max(stream.globalIdx(), 0) => chan.globalIdx() => FloatParameter
-		std::vector<std::vector<std::unique_ptr<FloatParameter>>> gain_params;
+		// this is a cache to avoid using getParameter on every single channel within the hot process() function
+		// No real effort is made to ensure memory safety here, but the process loop does defer to the stream to get the available list of channels,
+		// which should have associated params pre-cached here, if everything works as expected.
+		std::vector<std::vector<FloatParameter*>> gain_params;
+
+		// parameters are owned by the steam rather than the channels (it doesn't seem there is very goood support for params on continuous channels currently)
+		String makeGainParamName(int chanIdx) { return "gain_" + String(chanIdx); }
 	};
 
 }

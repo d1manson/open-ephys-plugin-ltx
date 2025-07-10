@@ -30,20 +30,7 @@ namespace LTX {
 
 PosVisualizerPlugin::PosVisualizerPlugin() : GenericProcessor("Pos Viewer")
 {
-    this->addIntParameter(Parameter::GLOBAL_SCOPE, "Width", "INACTIVE / DEPRECATED", 1000, 200, 5000, false);   // OE does not handle removing parameters very well, so we leave these here for now
-    this->addIntParameter(Parameter::GLOBAL_SCOPE, "Height", "INACTIVE / DEPRECATED", 1000, 200, 5000, false);
-
-    this->addIntParameter(Parameter::GLOBAL_SCOPE, "Left", "Window left in the 'pixel' units sent by Bonsai.", 0, 0, 5000, false);
-    this->addIntParameter(Parameter::GLOBAL_SCOPE, "Right", "Window right in the 'pixel' units sent by Bonsai.", 1000, 200, 5000, false);
-    this->addIntParameter(Parameter::GLOBAL_SCOPE, "Top", "Window top in the 'pixel' units sent by Bonsai.", 0, 0, 5000, false);    
-    this->addIntParameter(Parameter::GLOBAL_SCOPE, "Bottom", "Window bottom in the 'pixel' units sent by Bonsai.", 1000, 200, 5000, false);
-
-    this->addFloatParameter(Parameter::GLOBAL_SCOPE, "PPM", "Pixels Per Meter", 400.0f, 100.0f, 1000.0f, 0.1, false);
-
-    paramLeft = reinterpret_cast<IntParameter*>(getParameter("Left"));
-    paramRight = reinterpret_cast<IntParameter*>(getParameter("Right"));
-    paramTop = reinterpret_cast<IntParameter*>(getParameter("Top"));
-    paramBottom = reinterpret_cast<IntParameter*>(getParameter("Bottom"));
+   
 }
 
 
@@ -52,6 +39,24 @@ PosVisualizerPlugin::~PosVisualizerPlugin()
 
 }
 
+void PosVisualizerPlugin::registerParameters()
+{
+    addIntParameter(Parameter::PROCESSOR_SCOPE, "width", "Width", "INACTIVE / DEPRECATED", 1000, 200, 5000, false);   // OE does not handle removing parameters very well, so we leave these here for now
+    addIntParameter(Parameter::PROCESSOR_SCOPE, "height", "Height", "INACTIVE / DEPRECATED", 1000, 200, 5000, false);
+
+    addIntParameter(Parameter::PROCESSOR_SCOPE, "left", "Left", "Window left in the 'pixel' units sent by Bonsai.", 0, 0, 5000, false);
+    addIntParameter(Parameter::PROCESSOR_SCOPE, "right", "Right", "Window right in the 'pixel' units sent by Bonsai.", 1000, 200, 5000, false);
+    addIntParameter(Parameter::PROCESSOR_SCOPE, "top", "Top", "Window top in the 'pixel' units sent by Bonsai.", 0, 0, 5000, false);    
+    addIntParameter(Parameter::PROCESSOR_SCOPE, "bottom", "Bottom", "Window bottom in the 'pixel' units sent by Bonsai.", 1000, 200, 5000, false);
+
+    addFloatParameter(Parameter::PROCESSOR_SCOPE, "ppm", "PPM", "Pixels Per Meter", "pixels", 400.0f, 100.0f, 1000.0f, 0.1, false);
+
+    paramLeft = reinterpret_cast<IntParameter*>(getParameter("left"));
+    paramRight = reinterpret_cast<IntParameter*>(getParameter("right"));
+    paramTop = reinterpret_cast<IntParameter*>(getParameter("top"));
+    paramBottom = reinterpret_cast<IntParameter*>(getParameter("bottom"));
+
+}
 
 AudioProcessorEditor* PosVisualizerPlugin::createEditor()
 {
@@ -134,11 +139,10 @@ void PosVisualizerPlugin::handleSpike(SpikePtr spike)
 }
 
 
-void PosVisualizerPlugin::handleBroadcastMessage(String message)
+void PosVisualizerPlugin::handleBroadcastMessage (const String& msg, const int64 messageTimeMilliseconds)
 {
 
 }
-
 
 void PosVisualizerPlugin::saveCustomParametersToXml(XmlElement* parentElement)
 {
@@ -157,7 +161,7 @@ void PosVisualizerPlugin::parameterValueChanged(Parameter* param) {
     LTX::SharedState::window_max_x = paramRight->getValue();
     LTX::SharedState::window_min_y = paramTop->getValue();
     LTX::SharedState::window_max_y = paramBottom->getValue();
-    LTX::SharedState::pixels_per_metre = getParameter("PPM")->getValue();
+    LTX::SharedState::pixels_per_metre = getParameter("ppm")->getValue();
 };
 
 }

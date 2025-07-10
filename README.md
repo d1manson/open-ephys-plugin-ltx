@@ -1,4 +1,4 @@
-# Open Ephys Plugin - LTX Record Engine
+# Open Ephys (v1) Plugin - LTX Record Engine
 
 The LTX format is broadly compatible with **L**egacy analysis code used with **T**etrode recordings in various rodent labs. However it is _not_ e**X**plicitly defined.
 Amongst other pre-existing tools, the LTX files should be viewable within the [Waveform GUI](https://github.com/d1manson/waveform).
@@ -69,4 +69,7 @@ GUI_BASE_DIR=../main-gui CMAKE_C_COMPILER=clang CMAKE_CXX_COMPILER=clang cmake -
 # and then to actually build
 cmake --build . --config Release -- -arch x86_64 &&
 cp -R Release/open-ephys-plugin-ltx.bundle /Users/<YOUR_MAC_USER_NAME_HERE>/Library/Application\ Support/open-ephys/plugins-api8/ 
+
+# or (if copying into the dev build of the gui):
+cp -R  Release/open-ephys-plugin-ltx.bundle "../main-gui/Build/Release/Open Ephys GUI.app/Contents/Plugins/" 
 ```
