@@ -108,7 +108,9 @@ namespace LTX {
 
     
     void GainPopupComponent::sliderValueChanged(Slider* slider) {
-        gain_params[sliders.indexOf(slider)]->setNextValue(slider->getValue());
+        // not sure (yet) how to make it work wiith undo enabled, so disable it for now
+        //LOGC("param key: ", gain_params[sliders.indexOf(slider)]->getKey());
+        gain_params[sliders.indexOf(slider)]->setNextValue(slider->getValue(), true);
     }
 
 
@@ -132,7 +134,6 @@ namespace LTX {
 
     void GainProcessorPluginEditor::buttonClicked(Button* button)
     {
-        LOGC("Configure clicked!")
         if (button != configureButton.get()){
             return;
         }
