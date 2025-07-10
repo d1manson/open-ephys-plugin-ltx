@@ -31,7 +31,7 @@ namespace LTX {
 		fprintf(theFile, "\r\ntrial_time %s", strftime_output);
 
 		// headers: hard-coded values
-		fprintf(theFile, "\r\ncreated_by open-ephys-plugin-ltx");
+		fprintf(theFile, "\r\ncreated_by open-ephys-plugin-ltx 1.0.0");
 
 		// headers: placeholder for duration
 		fprintf(theFile, "\r\nduration %s", placeholder_token);
