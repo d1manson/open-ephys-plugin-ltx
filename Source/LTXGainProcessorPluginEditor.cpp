@@ -108,8 +108,6 @@ namespace LTX {
 
     
     void GainPopupComponent::sliderValueChanged(Slider* slider) {
-        // not sure (yet) how to make it work wiith undo enabled, so disable it for now
-        //LOGC("param key: ", gain_params[sliders.indexOf(slider)]->getKey());
         gain_params[sliders.indexOf(slider)]->setNextValue(slider->getValue(), true);
     }
 
