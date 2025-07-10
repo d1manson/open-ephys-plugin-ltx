@@ -45,6 +45,10 @@ Note that you'll need three separate nodes in openephys, one to create set+tet f
 
 We do provide here a sample Open Ephys config file here, `./oe_sample_config` (though it may be a bit out of data compared to later revisions outside of source control).
 
+## Installing
+
+This plugin is not part of the offical set of Open Ephys plugins, but you can easily install it yourself by downloading the `.dll` file from the [latest release](https://github.com/d1manson/open-ephys-plugin-ltx/releases)
+and then moving it into your `C:\Program Files\Open Ephys\plugins` folder (Mac/Linux binaries not provided here currently).
 
 ## Development
 
