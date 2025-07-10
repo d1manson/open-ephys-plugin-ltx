@@ -96,6 +96,11 @@ namespace LTX {
             setFile->AddHeaderValue("lightBearing_3", 0);
             setFile->AddHeaderValue("lightBearing_4", 0);
 
+            setFile->AddHeaderValue("colactive_1", 1);
+            setFile->AddHeaderValue("colactive_2", 1);
+            setFile->AddHeaderValue("colactive_3", 0);
+            setFile->AddHeaderValue("colactive_4", 0);
+
 
             tetFiles.clear();
             tetSpikeCount.clear();
