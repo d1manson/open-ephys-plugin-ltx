@@ -61,12 +61,11 @@ namespace LTX {
     {
         for (auto stream : getDataStreams()) {
             const uint32 numSamples = getNumSamplesInBlock(stream->getStreamId());
-            const auto& gain_params_for_stream = gain_params[std::max(stream->getGlobalIndex(),0)];
+            auto& gain_params_for_stream = getParameterCacheByStreamName(stream->getName());
             for (auto chan : stream->getContinuousChannels())
             {
-                int chanIndex = chan->getGlobalIndex();
-                FloatVectorOperations::multiply(buffer.getWritePointer(chanIndex),
-                    gain_params_for_stream[chanIndex]->getFloatValue(), static_cast<size_t>(numSamples));
+                FloatVectorOperations::multiply(buffer.getWritePointer(chan->getGlobalIndex()),
+                    gain_params_for_stream[chan->getLocalIndex()]->getFloatValue(), static_cast<size_t>(numSamples));
             }
         }
     }
@@ -79,7 +78,7 @@ namespace LTX {
 
         for (auto chan : stream->getContinuousChannels())
         {
-             params.push_back((FloatParameter*) stream->getParameter(makeGainParamName(chan->getGlobalIndex())));
+             params.push_back((FloatParameter*) stream->getParameter(makeGainParamName(chan->getLocalIndex())));
         }
         return params;
     }
@@ -114,28 +113,46 @@ namespace LTX {
 
     }
 
+    std::vector<FloatParameter *> &GainProcessorPlugin::getParameterCacheByStreamName(String streamName)
+    {
+        for (auto& tuple : gain_params)
+        {
+            if (std::get<0>(tuple) == streamName)
+            {
+                return std::get<1>(tuple);
+            }
+        }
+        gain_params.emplace_back(streamName, std::vector<FloatParameter *>{});
+        return std::get<1>(gain_params.back());
+    }
 
-    void GainProcessorPlugin::ensureParamsExist() {
+    void GainProcessorPlugin::ensureParamsExist()
+    {
         gain_params.resize(getNumDataStreams());
 
-        for (auto stream : getDataStreams()) {
+        for (auto stream : getDataStreams())
+        {
             auto stream_ = getDataStream(stream->getStreamId()); // non-const version for use with adding parameters below
-            auto& gain_params_stream = gain_params[std::max(stream->getGlobalIndex(), 0)];
+
+            auto& gain_params_stream = getParameterCacheByStreamName(stream->getName());
             gain_params_stream.resize(stream->getChannelCount());
 
-            for (auto chan : stream->getContinuousChannels()) {
-                const int chanIdx = chan->getGlobalIndex();
-                if (!stream->hasParameter(makeGainParamName(chanIdx))) {
-                    auto param = new FloatParameter(
+            for (auto chan : stream->getContinuousChannels())
+            {
+                auto chan_idx = chan->getLocalIndex();
+                auto param_name = makeGainParamName(chan_idx);
+                FloatParameter *param = (FloatParameter*) stream->getParameter(param_name);
+                if (param == nullptr)
+                {
+                    param = new FloatParameter(
                         this,
                         Parameter::ParameterScope::STREAM_SCOPE,
-                        makeGainParamName(chanIdx),
+                        param_name,
                         "Gain ch" + chan->getName(),
-                        "Multiply the voltage by x", "x", 1.0f, -2.0f, 3.0f, 0.05f
-                    );
+                        "Multiply the voltage by x", "x", 1.0f, -2.0f, 3.0f, 0.05f);
                     stream_->addParameter(param);
-                    gain_params_stream[chanIdx] = param; // Not sure if there are memory safety issues with storing a reference here. Might be better to store the raw floats instead and update based on changes
                 }
+                gain_params_stream[chan_idx] = param; // Not sure if there are memory safety issues with storing a reference here. Might be better to store the raw floats instead and update based on changes
             }
         }
     }

@@ -83,11 +83,14 @@ namespace LTX {
 	private:
 		void ensureParamsExist();
 
-		// maps std::max(stream.globalIdx(), 0) => chan.globalIdx() => FloatParameter
-		// this is a cache to avoid using getParameter on every single channel within the hot process() function
-		// No real effort is made to ensure memory safety here, but the process loop does defer to the stream to get the available list of channels,
-		// which should have associated params pre-cached here, if everything works as expected.
-		std::vector<std::vector<FloatParameter*>> gain_params;
+		/** Stores:
+			 [	(streamName0, [chan0_FloatParameter, chan1_FloatParameter, ...]),
+				(streamName1, [chan0_FloatParameter, chan1_FloatParameter, ...]), ...]
+		It is a cache to avoid using getParameter on every single channel within the hot process() function. Hopefully there are no bugs using this cache.
+		Use getParameterCacheByStreamName to upsert a new stream into the cache, and get back a reference to the vector cache.
+		**/
+		std::vector<std::tuple<String, std::vector<FloatParameter *>>> gain_params;
+		std::vector<FloatParameter *> &getParameterCacheByStreamName(String streamName);
 
 		// parameters are owned by the steam rather than the channels (it doesn't seem there is very goood support for params on continuous channels currently)
 		String makeGainParamName(int chanIdx) { return "gain_" + String(chanIdx); }
