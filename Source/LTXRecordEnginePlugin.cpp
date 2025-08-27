@@ -45,6 +45,7 @@ namespace LTX {
     constexpr int oeSampsPerSpike = 40; // seems to be hard-coded as 8+32 = 40
     constexpr int posTimestampChannel = 0; // provided by the bonsai source plugin
     constexpr int posNaN = 1023; // when writing pos data as uint16s, if we encounter a NaN in the source float data, we write this value.
+    constexpr char* ignore_stream_named = "memory_usage";
 
     RecordEnginePlugin::RecordEnginePlugin() {}
 
@@ -69,13 +70,30 @@ namespace LTX {
             mode = RecordMode::NONE;
             return;
         }
-        else if (getContinuousChannel(0)->getStreamName() == "bonsai") {
+        else if (getContinuousChannel(getGlobalIndex(0))->getStreamName() == "bonsai") {
             mode = RecordMode::POS_ONLY; // first continuous channel is bonsai data, treat as pos
             LOGC("LTX RecordEngine using mode:POS_ONLY (", mode, ").");
+            if (getNumRecordedDataStreams() != 1) {
+                LOGE("For LTX pos, require exactly 1 data stream, but found ", getNumRecordedDataStreams(), " streams.");
+                CoreServices::setAcquisitionStatus(false);
+                return;
+            }
         }
         else {
             mode = RecordMode::EEG_ONLY;
             LOGC("LTX RecordEngine using mode:EEG_ONLY (", mode, ").");
+            size_t n_streams = 0;
+            for (auto stream : getDataStreams()) {
+                if (stream->getName() == ignore_stream_named) {
+                    continue;
+                }
+                n_streams++;
+            }
+            if (n_streams != 1) {
+                LOGE("For LTX eeg, require exactly 1 data stream (excluding a '", ignore_stream_named, "', but found ", n_streams, " streams.");
+                CoreServices::setAcquisitionStatus(false);
+                return;
+            }
         }
 
         std::string basePath = rootFolder.getParentDirectory().getFullPathName().toStdString()
@@ -141,7 +159,10 @@ namespace LTX {
             eegFullSampCount.clear();
             for (int i = 0; i < getNumRecordedContinuousChannels(); i++) {
                 // important check before we get going...
-                const ContinuousChannel* channel = getContinuousChannel(i);
+                const ContinuousChannel* channel = getContinuousChannel(getGlobalIndex(i));
+                if (channel->getStreamName() == ignore_stream_named) {
+                    continue;
+                }
                 if (channel->getSampleRate() != eegInputSampRate) {
                     LOGE("Expected a sample rate of exactly ", eegInputSampRate, ", but found ", channel->getSampleRate());
                     CoreServices::setAcquisitionStatus(false);
@@ -152,14 +173,17 @@ namespace LTX {
                 LTXFile* f = eegFiles.back().get();
                 f->AddHeaderValue("num_chans", 1);
                 f->AddHeaderValue("sample_rate", std::to_string(eegOutputSampRate) + " hz");
+                f->AddHeaderValue("stream_name", channel->getStreamName().toStdString());
+                f->AddHeaderValue("chan_name", channel->getName().toStdString());
                 f->AddHeaderPlaceholder("num_EEG_samples");
                 eegFullSampCount.push_back(0);
             }
         }
         else if (mode == RecordMode::POS_ONLY) {
-            if (getDataStream(0)->getContinuousChannels().size() != requiredPosChans) {
+
+            if (getNumRecordedContinuousChannels() != requiredPosChans) {
                 LOGE("For LTX pos, require exactly ", requiredPosChans, " float channels from Bonsai. The first is a timestamp, and then x1,y1,x2,y2,numpix1,numpix2. ",
-                    "However, received ", getDataStream(0)->getContinuousChannels().size(), " channels.");
+                    "However, received ", getNumRecordedContinuousChannels(), " channels.");
                 CoreServices::setAcquisitionStatus(false);
                 return;
             }
@@ -167,7 +191,7 @@ namespace LTX {
 
             posFile = std::make_unique<LTXFile>(basePath, ".pos", start_tm);
 
-            posSampRate = getContinuousChannel(0)->getSampleRate();
+            posSampRate = getContinuousChannel(getGlobalIndex(0))->getSampleRate();
             posFile->AddHeaderValue("timestamp_timebase", std::to_string(timestampTimebase) + " hz");
             posFile->AddHeaderValue("timebase", std::to_string(posSampRate) + " hz"); // required by Waveform GUI at least, maybe other code
             posFile->AddHeaderValue("sample_rate", std::to_string(posSampRate) + " hz");
@@ -256,6 +280,9 @@ namespace LTX {
         }
 
         if (mode == RecordMode::EEG_ONLY) {
+            if (getContinuousChannel(realChannel)->getStreamName() == ignore_stream_named) {
+                return;
+            }
             // no timestamps written in the EEG file at all
             constexpr int outputBufferSize = 1024;
             if (size / eegDownsampleBy + 1 > outputBufferSize) {
@@ -369,29 +396,24 @@ namespace LTX {
     }
 
     void RecordEnginePlugin::writeTimestampSyncText(
-        uint64 streamId,
+        DataStream* stream,
         int64 sampleNumber,
-        float sourceSampleRate,
+        double timestamp,
         String text)
     {
-        if (streamId == 0) {
+        if (stream == nullptr || stream->getName() == ignore_stream_named) {
             return;
         }
         if (startingTimestamp != TIMESTAMP_UNINITIALIZED) {
-            LOGE("MODE:", mode, ": writeTimestampSyncText() called more than once with non-zero streamId. Aborting recording.");
+            LOGE("MODE:", mode, ": writeTimestampSyncText() called more than once with a seemingly valid stream. Aborting recording.");
             CoreServices::setAcquisitionStatus(false);
         }
+        startingTimestamp = timestamp;
 
-        // we actually want the timestamp not the sampleNumber to match the timestamp we get in writeSpikes and writeContinous functions
-        // the sourceSampleRate passed in here seems to be zer , which is a bit odd. Also, calling getDataStream(streamId) doesn't work either.
-        sourceSampleRate = getContinuousChannel(0)->getSampleRate();
-
-        // not 100% sure this is a safe calculation to do here, but I think it probably is if we only have one stream as there's not fancy synchronization to contend with
-        startingTimestamp = static_cast<double>(sampleNumber) / sourceSampleRate;
     }
 
-    void RecordEnginePlugin::setParameter (EngineParameter& parameter)
+    void RecordEnginePlugin::setParameter(EngineParameter& parameter)
     {
     }
 
-    }
+}

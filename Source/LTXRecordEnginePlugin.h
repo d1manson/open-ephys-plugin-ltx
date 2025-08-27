@@ -73,10 +73,7 @@ namespace LTX {
         void writeSpike(int electrodeIndex, const Spike* spike) override;
 
         /** Write the timestamp sync text messages to disk*/
-        void writeTimestampSyncText(uint64 streamId,
-                                    int64 sampleNum,
-                                    float sourceSampleRate,
-                                    String text) override;
+        void writeTimestampSyncText(DataStream* stream, int64 sampleNumber, double timestamp, String text) override;
 
 
         
